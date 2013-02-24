@@ -1,0 +1,9 @@
+*.pyc
+*.project
+*.pydevproject
+*.settings
+*.h5
+*.db
+*.npy
+*.npz
+
