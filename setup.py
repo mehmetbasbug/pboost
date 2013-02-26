@@ -91,7 +91,7 @@ setup(name='pboost',
       packages = packages,
       cmdclass = cmdclasses,
       data_files = data_files,
-      package_data = {'pboost': ['demo/*']},
+      package_data = {'pboost': ['demo/*.dat','demo/*.cfg','demo/*.py']},
       #package_data={'pboostz['latex/*.eps', 'latex/*.tex'
       #                           'html/*.html']},
       classifiers=['Development Status :: Beta',
