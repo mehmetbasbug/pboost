@@ -1,0 +1,194 @@
+/******************************************************************************
+PBOOST : Parallel Implementation of Boosting Algorithms with MPI
+
+February 2013
+Princeton University
+******************************************************************************/
+
+
+This file describes the general structure of the files and directories
+in the repository, as well as user guideline for using this package.
+We also provide a synthetic example for illustrating the execution of
+the program, in the /demo directory.
+
+A.REQUIREMENTS
+-------------------------------------------------------------------------------
+Python Version : 2.7 or above
+C Libraries : HDF5, OpenMPI
+Python Libraries : numpy, numexpr, h5py, mpi4py, matplotlib
+
+B.RUNNING DEMO
+-------------------------------------------------------------------------------
+Change your directory into pboost and then run the following command
+
+mpirun -np 2 python run.py ./demo/configurations.cfg 1
+
+You should be able to see
+
+Info : Confusion matrix for combined validation error with zero threshold :
+{'FP': 11, 'TN': 89, 'FN': 10, 'TP': 90}
+Info : Confusion matrix for testing error with zero threshold :
+{'FP': 11, 'TN': 89, 'FN': 12, 'TP': 88}
+Info : Training Error of the final classifier : 0.0
+Info : Validation Error of the final classifier : 0.105
+Info : Testing Error of the final classifier : 0.115
+
+C.CREATING YOUR CONFIGURATION FILE
+-------------------------------------------------------------------------------
+Create an empty text file with extension of cfg. An example and explanation of 
+the format can be found in demo folder. 
+
+Data files (train_file and test_file) should be in HDF5 format with raw data is 
+named "data" and label should be named "label". Alternatively one can use the 
+last column of 'data' dataset as the label. The program will assume the last 
+column as the label when a separate "label" dataset is not given. If there is no
+separate test dataset, please leave test_data option blank.
+
+working_dir option refers to the working directory to be used. This directory 
+should be on a shared disk space. Data files and feature factory files should be 
+put in that directory.
+
+factory_files option refers to the files containing user defined feature factories.
+If you want to use each column as a different feature, leave this option blank. 
+Otherwise see diabetes_feature_factory.py file for a simple file containing four
+user define FeatureFactory classes. Each user defined Feature Factory class should
+inherit from BaseFeatureFactory and override blueprint and make methods. The 
+blueprint method refers to the definition of feature. In the given example file,
+blueprint for BGL_Day_Av class is basically takes three arguments (column indexes) 
+and returns average of the data over these three columns. The second method, make, 
+is about giving appropriate arguments to blueprint function to create features. 
+For BGL_Day_Av class, make method creates features by averaging the morning, 
+afternoon and evening Blood Glucose Level for each day in the dataset. One important
+detail is to call insert method for each feature. Finally one can specify several 
+files each containing several Feature Factory classes. However all these files 
+should be in the working directory. 
+
+algorithm option should be one of the followings: adaboost, conf-rated
+
+rounds option refers to the number of boosting rounds to be used 
+
+xval_no option refers to the number of cross validation folds to be used. In order 
+to disable cross validation set this number to 1
+
+max_memory option refers to the amount of available RAM to each core, in GigaBytes
+
+show_plots option should be used to enable/disable plotting before the program 
+terminates. All the necessary data is always stored in output folder and plots can be 
+generated later on.
+
+
+D. RUNNING YOUR PROGRAM
+-------------------------------------------------------------------------------
+run.py takes two arguments cp and cn
+  cp : Path to the configuration file
+  cn : Configuration numbers to process
+
+A typical command to run pboost looks like 
+ 
+mpirun -np NUMBER_OF_PROCESSORS python run.py PATH_TO_CONF_FILE CONF_NUM_1 CONF_NUM2
+
+The output will be in the folder out_{CONF_NUM} and has the following files in it:
+feature factory files : 
+final_classifier.py
+
+
+GENERAL GUIDELINES FOR THE USER OF THIS PACKAGE:
+-----------------------------------------------
+
+-User must provide a "configurations" file in INI format, which
+ contains different "sections" for different configurations. The user 
+ must provide the correct configurations, in a complete form, in order
+ to use the software.
+
+-"Working Directory" is a string consisting of the path to the where 
+ the large datafiles, behavioral functions, etc. are stored, and contains
+ enough *shared* disk space to support the execution of the program, and
+ contain the intermediary files.
+
+-The name of the training dataset (provided by the user) should be "data".
+
+-The name of the test dataset (provided by the user) should be "test".
+
+-Python files containing behavioral function definitions should be 
+ in the working directory (specified in the configuration file). These
+ should inherit from the abstract class, and have the same methods to
+ implement correct instances of that class:
+ behavior, fn_generator
+
+
+
+RUNNING THE PROGRAM:
+-------------------
+
+You may use the contents of the example directory for a demo of the program.
+You must follow the following steps closely in order to be able to view 
+the results and functionality of the program:
+
+
+-You must ensure that HDF5 and OpenMPI are installed on your machine.
+ Additionally, the following python packages are required:
+ numpy, numexpr, h5py, mpi4py, matplotlib
+
+
+-You must also ensure that your $PYTHONPATH environment variable in
+ bash contains the path to the root directory of the project in order
+ for the mpi parallelization to work. If running on a server, this has to be
+ done for all nodes. The bash profile can be changed to
+ accomplish this.
+ 
+ The task above has been automated by our setup.py package, present in the root
+ of the repository. Assuming you have sudo privelages, you can perform the
+ following:
+ 
+ 	$(sudo) python setup.py install
+ 
+ The package will be installed in the site-packages directory of the 
+ active python version.
+
+ Alternatively, if sudo privelages do not exist, just by downloading the
+ package and running pboost.py from within that package, it will temporarily be
+ recognized as a package. This is suitable for just running tests, but you
+ cannot import the package in a python interpreter like before.
+
+
+-You must create a dataset to work with. To do this, you may use the synthetic
+ data generator in the example directory, as follows:
+
+    $ cd example/
+    $ python synthetic_data_generator.py 900 100 900 100 1000 diabetes
+
+ This will create two datasets: diabetes_train.dat and diabetes_test.dat
+ which can be used as training and testing data. It is created by sampling from
+ Gaussian distributions over BMI, glucose levels, age, etc. for sick and
+ healthy people and assigning known labels. 10% of labels are intentionally
+ assigned falsely. There is also added white noise over the Gaussians.
+ This creates two 1000x3004 datasets.
+
+
+-To run the program with the provided example, you must run a command
+ such as:
+	
+    $ cd ../parallel_boosting/
+    $ mpirun -np 2 python pboost.py ../example/configurations.cfg 1
+       
+ where:
+ 
+ Number of available (requested) cores = 2
+ Path to configuration file = "../example/configurations.cfg"
+ Configuration number = 1
+
+ This is a script for running the parser, doing preprocessing,
+ applying boosting, and calling the postprocessor.
+ 
+ 
+-To generate API documentation for Python modules, a provided configuration 
+  file is read by Epydoc documentation tool. Using the command line interface, 
+  the Epydoc script extracts API documentation for Python objects, and generates 
+  the output in html format. Once Epydoc is installed, the script can be run 
+  from the parallel_boosting package directory with the following command:
+  
+  $epydoc --config=${path_to_directory_where_confEpyDoc_is}/confEpyDoc.cfg
+
+-Note: All of these steps have been left to the user to keep the size of the
+ package small.
+

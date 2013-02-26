@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pboost.report import pyroc
 from pboost.report import final_classifier_script
-from pboost.feature.factory import DefaultFeatureFactory
+from pboost.feature import factory
 
 class Reporter():
     def __init__(self, pb):
@@ -161,12 +161,17 @@ class Reporter():
         conn = sqlite3.connect(self.pb.feature_db)
         cursor = conn.cursor()        
         
-        for h in self.hypotheses:
-            fn_def = self._get_feature_def(cursor,h['d1'])
-            h['fn_def'] = fn_def[len(self.pb.wd):]
-        
+        for h_ind in np.arange(len(self.hypotheses)):
+            h = self.hypotheses[h_ind]
+            offset = self.pb.partition[h['rnk']]
+            fn_def = self._get_feature_def(cursor,offset + h['d1'])
+            head,tail = os.path.split(fn_def[0])
+            root,ext =  os.path.splitext(tail)
+            fn_def[0] = './'+root+'.py'
+            h['fn_def'] = fn_def
+            self.hypotheses[h_ind] = h
         conn.close()
-
+        
         """Save hypotheses to final_classifier"""
         hypotheses_path = self.out_fp + 'hypotheses.npy'
         np.save(hypotheses_path, self.hypotheses)
@@ -174,7 +179,8 @@ class Reporter():
         """Copy user blueprintd functions to final_classifier"""
         for feature_fp in self.pb.factory_files:
             if feature_fp == 'default':
-                src_path = inspect.getfile(DefaultFeatureFactory)
+                src_path = os.path.abspath(factory.__file__).replace('.pyc','.py')
+                feature_fp = "factory.py"
             else:
                 src_path = self.pb.wd + feature_fp
             dst_path = self.out_fp + feature_fp
@@ -182,7 +188,7 @@ class Reporter():
         
         """Copy final_classifier script file"""
         final_classifier_path = self.out_fp + 'final_classifier.py'
-        shutil.copyfile(os.path.abspath(final_classifier_script.__file__),
+        shutil.copyfile(os.path.abspath(final_classifier_script.__file__).replace('.pyc','.py'),
                         final_classifier_path)
 
     def clean(self):
