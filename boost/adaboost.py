@@ -7,7 +7,7 @@ class AdaBoost(Boosting):
     def __init__(self, boosting_p):
         """
         
-        Confidence-Rated Boosting Implementation
+        AdaBoost Implementation
         
         boosting_p
             Boosting environment in which this algoritm runs
@@ -22,7 +22,7 @@ class AdaBoost(Boosting):
         self.test_predictions = None
 
         if self.process.classifyEN:
-            if self.isXvalMain:
+            if self.process.isXvalMain:
                 train_span = self.pb.train_ind2 - self.pb.train_ind1
                 self.train_predictions = np.zeros(
                 [train_span,self.pb.rounds],'float32')
@@ -35,9 +35,8 @@ class AdaBoost(Boosting):
                     self.val_predictions = np.zeros(
                     [self.process.val_exam_no,self.pb.rounds],'float32')
         
-        self.current_results = np.zeros(self.process.total_exam_no)
-        self.tl = np.int16(np.copy(self.process.train_label))
-        self.tl[self.process.train_label == 0] = -1
+        self.tl = np.int16(np.copy(self.process.label))
+        self.tl[self.process.label == 0] = -1
         
 
     def run(self, dt, r, val, bout):
@@ -73,19 +72,19 @@ class AdaBoost(Boosting):
         
         self.hypotheses.append(h)
         if self.process.classifyEN:
-            if self.isXvalMain:
-                bout = bout[self.pb.train_ind1:self.pb.train_ind2]
-                nbout = np.logical_not(bout)
-                s1 = bout*c0
-                s2 = nbout*c1
+            if self.process.isXvalMain:
+                pbout = bout[self.pb.train_ind1:self.pb.train_ind2]
+                npbout = np.logical_not(pbout)
+                s1 = pbout*c0
+                s2 = npbout*c1
                 self.train_predictions[:,r]=(self.train_predictions[:,r-1]
                                                + s1 + s2)
             else:
                 if self.pb.isLeader and self.pb.xvalEN:
-                    bout = bout[self.process.val_indices]
-                    nbout = np.logical_not(bout)
-                    s1 = bout*c0
-                    s2 = nbout*c1
+                    pbout = bout[self.process.val_indices]
+                    npbout = np.logical_not(pbout)
+                    s1 = pbout*c0
+                    s2 = npbout*c1
                     self.val_predictions[:,r]=(self.val_predictions[:,r-1]
                                                    + s1 + s2)
         
@@ -112,7 +111,12 @@ class AdaBoost(Boosting):
                 pass
         
         for rnk in rnk_list:
-            mf = h5py.File(self.pb.model_fp,'r')
+            model_fp = self.pb.wd + "model_%s_%s.h5" % (self.pb.conf_num,rnk)
+            try:
+                mf = h5py.File(model_fp,'r')
+            except Exception as e:
+                print model_fp
+                print e
             unsorted_ds = mf["train_unsorted"]
             for r  in inverse[rnk]:
                 h = self.hypotheses[r]
@@ -153,7 +157,7 @@ class AdaBoostWL(WeakLearner):
     def __init__(self, boosting_p):
         """
         
-        Decision Stump Implementation compatible with Confidence-Rated Boosting
+        Decision Stump Implementation compatible with AdaBoost
         
         boosting_p
             Boosting environment in which this algoritm runs
@@ -169,9 +173,9 @@ class AdaBoostWL(WeakLearner):
         self.__w00 = np.zeros(shape = self.__index.shape,dtype ="float32")
         self.__w01 = np.zeros(shape = self.__index.shape,dtype ="float32")
         self.__err = np.zeros(shape = self.__index.shape,dtype ="float32")
-        self.bout = np.zeros(self.__index.shape[1],dtype="bool")
-        self.__cdt = np.zeros(shape = self.process.train_label.shape,dtype ="float32")
-        self.__cdnt = np.zeros(shape = self.process.train_label.shape,dtype ="float32")
+        self.__bout = np.zeros(self.__index.shape[1],dtype="bool")
+        self.__cdt = np.zeros(shape = self.process.label.shape,dtype ="float32")
+        self.__cdnt = np.zeros(shape = self.process.label.shape,dtype ="float32")
     
     def run(self, dt):
         """
@@ -195,8 +199,8 @@ class AdaBoostWL(WeakLearner):
         """Calculate the weighted error matrix for label=0 pred=0"""
         
         """Calculate the weighted error matrix for label=1 pred=0"""
-        self.__cdnt = np.float32(dt * np.logical_not(self.process.train_label.T))
-        self.__cdt = np.float32(dt * self.process.train_label.T)
+        self.__cdnt = np.float32(dt * np.logical_not(self.process.label.T))
+        self.__cdt = np.float32(dt * self.process.label.T)
         self.__w00 = np.take(self.__cdnt, self.__index)
         np.cumsum(self.__w00, axis=1, dtype ="float32", out=self.__w00)
         self.__w01 = np.take(self.__cdt, self.__index)
@@ -204,16 +208,19 @@ class AdaBoostWL(WeakLearner):
         w00_max = np.amax(self.__w00[:, -1])
         w01_max = np.amax(self.__w01[:, -1])
         """Calculate the weighted error matrix and find the least error"""
-        self.__err = evaluate("sqrt((w00_max-w00)*(w01_max - w01)) + sqrt(w00*w01)",
-                              local_dict = {'w00': self.__w00, 
-                                            'w01': self.__w01,
-                                            'w00_max' : w00_max,
-                                            'w01_max' : w01_max,})
-              
-        err_ind = np.argmin(self.__err)
+        self.__err = evaluate("w00 - w01",local_dict = {'w00': self.__w00, 
+                                                        'w01': self.__w01,})
+        e1 = w01_max + np.amin(self.__err)
+        e2 = w00_max - np.amax(self.__err)
+        if e1 < e2:
+            err_ind = np.argmin(self.__err)
+            err_best = e1
+        else:
+            err_ind = np.argmax(self.__err)
+            err_best = e2
+        
         (d1, d2) = np.unravel_index(err_ind, self.__err.shape)
-        err_best = self.__err[d1, d2]
-            
+
         """Calculate d1 d2 d3 d4"""
         
         if d2 < self.process.train_exam_no - 1: 
@@ -229,11 +236,19 @@ class AdaBoostWL(WeakLearner):
         w01_bh = self.__w01[d1, d2]
         w10_bh = w00_max - w00_bh
         w11_bh = w01_max - w01_bh
-        c0 = 0.5 * np.log((w01_bh + eps) / (w00_bh + eps))
-        c1 = 0.5 * np.log((w11_bh + eps) / (w10_bh + eps))
-        self.bout[:] = False
-        self.bout[self.__index[d1,0:d2+1]] = True
+        if err_best < eps:
+            err_best = eps
+        alpha = 0.5 * np.log((1.0-err_best)/err_best)
+        if w00_bh < w01_bh:
+            c0 = alpha
+        else:
+            c0 = -alpha
+        if w10_bh < w11_bh:
+            c1 = alpha
+        else:
+            c1 = -alpha
+        self.__bout[:] = False
+        self.__bout[self.__index[d1,0:d2+1]] = True
         
-#        d1 = d1 + self.pb.features_ind1
         val = np.array([err_best,self.pb.rank, d1, d2, d3, d4, c0, c1])
-        return val,self.bout
+        return val,self.__bout
