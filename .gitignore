@@ -1,3 +1,4 @@
+demo/out_*
 *.py~
 *.pyc
 *.project
