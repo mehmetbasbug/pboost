@@ -4,6 +4,7 @@ from distutils.command.install import INSTALL_SCHEMES
 from distutils.sysconfig import get_python_lib
 import os
 import sys
+import shutil
 
 #This script is based on the setup.py file provided in the following link:
 #https://github.com/django/django/blob/master/setup.py
@@ -112,3 +113,22 @@ is to remove the package in the following path
 manually and re-install Parallel Boosting.
 
 """ % { "existing_path": existing_path })
+    
+"""
+Copy scripts to your home directory
+"""
+if os.name == "posix":
+    pb_fp = os.path.join(os.path.expanduser('~'),'pboost')
+    if not os.path.exists(pb_fp):
+        os.mkdir(pb_fp)
+    dest = os.path.join(pb_fp, "run.py")
+    src = os.path.join(existing_path, "run.py")
+    shutil.copyfile(src,dest)
+    dest = os.path.join(pb_fp, "plot.py")
+    src = os.path.join(existing_path, "plot.py")
+    shutil.copyfile(src,dest)
+    dest = os.path.join(pb_fp, "demo")
+    if not os.path.exists(dest):
+        src = os.path.join(existing_path, "demo")
+        shutil.copytree(src,dest)
+    
