@@ -6,24 +6,23 @@ Princeton University
 ******************************************************************************/
 
 
-This file describes the general structure of the files and directories
-in the repository, as well as user guideline for using this package.
-We also provide a synthetic example for illustrating the execution of
-the program, in the /demo directory.
 
-A.REQUIREMENTS
+A.QUICK INSTALL
 -------------------------------------------------------------------------------
-Python Version : 2.7 or above
-C Libraries : HDF5, OpenMPI
-Python Libraries : numpy, numexpr, h5py, mpi4py, matplotlib
+First make sure that you have OpenMPI and HDF5 are available. Then to install
+pboost with all dependencies simply run
+
+pip install pboost  
+
+This will also create a directory named 'pboost' in your home folder.
 
 B.RUNNING DEMO
 -------------------------------------------------------------------------------
 Change your directory into pboost and then run the following command
 
-mpirun -np 2 python run.py ./demo/configurations.cfg 1
-
-You should be able to see
+ mpirun -np 2 python run.py ./demo/configurations.cfg 1
+ 
+You should see something similar to the following output
 
 Info : Confusion matrix for combined validation error with zero threshold :
 {'FP': 11, 'TN': 89, 'FN': 10, 'TP': 90}

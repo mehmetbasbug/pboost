@@ -1,3 +1,5 @@
+pboost.egg-info/*
+dist/*
 build/*
 demo/out_*
 *.py~

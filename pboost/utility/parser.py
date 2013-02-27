@@ -32,8 +32,7 @@ def get_configuration(conf_num, conf_path = "./configurations.cfg"):
         try:
             if option == 'working_dir': 
                 my_dict['working_dir'] = os.path.realpath(
-                             str(config.get(section,"working_dir")).strip()
-                             )
+                os.path.expanduser(str(config.get(section,"working_dir")).strip()))
             elif option in required_options:
                 my_dict[option] = config.get(section, option)
             else:

@@ -22,10 +22,16 @@ setup(name='pboost',
         'mpi4py',
         'matplotlib',
       ],
-      classifiers=['Development Status :: Beta',
+      classifiers=['Development Status :: 4 - Beta',
+                   'Environment :: Console',
+                   'Framework :: Buildout',
+                   'Intended Audience :: Information Technology',
+                   'License :: Free for non-commercial use',
+                   'Natural Language :: English',
                    'Operating System :: OS Independent',
                    'Programming Language :: Python',
-                   'Topic :: Machine Learning'],
+                   'Topic :: Scientific/Engineering :: Artificial Intelligence',
+                   ],
       )
 existing_path = os.path.abspath(__import__('pboost').__file__)
 existing_path,tail = os.path.split(existing_path)
