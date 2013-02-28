@@ -9,19 +9,16 @@ class Process():
         
         Set up the environment for a boosting process
         
-        pb
-            PBoost object containing global variables for the whole program
-        xval_ind
+        pb : pboost.environment.pb object
+            Contains data related to whole program
+            
+        xval_ind : integer
             Cross validation index
-        meta_dict
-            A dictionary containing information from pre-process
-        xval_group
-            Cross validation group containing the ranks of master and slaves
-        classifyEN
+        
+        classifyEN : boolean, optional
             Flag to enable predictions
             
         """
-        # Private attributes
         self.xval_ind = xval_ind
         self.pb = pb
         self.classifyEN = classifyEN
@@ -72,7 +69,18 @@ class Process():
             new = self.pb.comm.allreduce(val[0],None, MPI.MINLOC)
             val = self.pb.comm.bcast(val, root=new[1])
             bout = self.pb.comm.bcast(bout, root=new[1])
-            dt = boosting.run(dt, r, val, bout)
+            (rnk, d1, d2, d3, d4, c0, c1) = val[1:8]
+            rnk = int(rnk)
+            dt = boosting.run(dt = dt,
+                              r = r,
+                              rnk = rnk,
+                              d1 = d1,
+                              d2 = d2,
+                              d3 = d3,
+                              d4 = d4,
+                              c0 = c0,
+                              c1 = c1,
+                              bout = bout)
             
         if self.isXvalMain:
             boosting.finalize()

@@ -15,6 +15,8 @@ setup(name='pboost',
       license = "",
       packages = find_packages(),
       include_package_data=True,
+      package_data = {'pboost':['./demo/*.py','./demo/*.dat','./demo/*.cfg'],
+                      },
       install_requires = [
         'numpy',
         'numexpr',

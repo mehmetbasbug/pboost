@@ -5,8 +5,8 @@ try:
     from pboost.report.reporter import plot_data,report_results
 except ImportError:
     """
-    If parallel_boosting is not installed append parent directory of 
-    pboost.py into PYTHONPATH
+    If pboost is not installed append parent directory of 
+    run.py into PYTHONPATH and try again
     """
     sys.path.append(os.path.dirname(
                     os.path.dirname(os.path.realpath(__file__)))
@@ -18,7 +18,7 @@ if __name__ == '__main__':
     argparser = argparse.ArgumentParser(
                 description='Shows the plots for given pboost result file ')
     
-    argparser.add_argument('filepaths', 
+    argparser.add_argument('filepaths',
                            metavar='fp', 
                            type=str,
                            nargs='+',

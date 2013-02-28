@@ -7,9 +7,12 @@ class ConfidenceRatedBoosting(Boosting):
     def __init__(self, boosting_p):
         """
         
-        Confidence-Rated Boosting Implementation
+        Confidence Rated Boosting Implementation
         
-        boosting_p
+        Parameters
+        ----------
+
+        boosting_p : pboost.boost.process.Process object
             Boosting environment in which this algoritm runs
             
         """
@@ -21,6 +24,7 @@ class ConfidenceRatedBoosting(Boosting):
         self.train_predictions = None
         self.test_predictions = None
 
+        """Create empty prediction matrices"""
         if self.process.classifyEN:
             if self.process.isXvalMain:
                 train_span = self.pb.train_ind2 - self.pb.train_ind1
@@ -35,32 +39,56 @@ class ConfidenceRatedBoosting(Boosting):
                     self.val_predictions = np.zeros(
                     [self.process.val_exam_no,self.pb.rounds],'float32')
         
+        """Convert binary labesl to +1/-1 form"""
         self.tl = np.int16(np.copy(self.process.label))
         self.tl[self.process.label == 0] = -1
         
-
-    def run(self, dt, r, val, bout):
+    def run(self, dt, r, rnk, d1, d2, d3, d4, c0, c1, bout):
         """
         
         Run a single round of boosting
         
-        dt
-            Distribution over examples
-        r
+        
+        Parameters
+        ----------
+        
+        dt : numpy float array
+            Probability distribution over examples
+        
+        r : integer
             Round number
         
+        rnk : integer
+            Rank of the core containing best hyp in its space
+            
+        d1 : integer
+            Index of the best hypothesis
+        
+        d2 : integer
+            The relative index of the example where threshold is placed
+            
+        d3 : integer
+            The actual index of the example where threshold is placed
+            
+        d4 : integer
+            The actual index of the next example in threshold calculation
+        c0 : float
+            Prediction for values lower than threshold
+        
+        c1 : float
+            Prediction for values larger than threshold
+        
+        bout : numpy boolean array
+            Marker for each example best hyp making a mistake
+            
         Returns:
             Updated distribution over examples
 
         """
-        
-        """Find the weak learner with the least weighted error""" 
-        (rnk, d1, d2, d3, d4, c0, c1) = val[1:8]
-        rnk = int(rnk)
-        """Get the unsorted results for the hypothesis found by WL"""
-        v = 0.0
+
                 
-        """Create a dictionary for the hypothesis found in this round"""
+        """Create a dictionary for the best hypothesis"""
+        v = 0.0
         h = {'rnk':rnk,
              'd1':d1,
              'd2':d2,
@@ -71,6 +99,8 @@ class ConfidenceRatedBoosting(Boosting):
              'c1':c1}
         
         self.hypotheses.append(h)
+
+        """Update training and validation predictions"""
         if self.process.classifyEN:
             if self.process.isXvalMain:
                 pbout = bout[self.pb.train_ind1:self.pb.train_ind2]
@@ -88,16 +118,18 @@ class ConfidenceRatedBoosting(Boosting):
                     self.val_predictions[:,r]=(self.val_predictions[:,r-1]
                                                    + s1 + s2)
         
+        """Update distribution over the examples"""
         nbout = np.logical_not(bout)
         dt[bout] = dt[bout] * np.exp(-self.tl[bout] * np.float32(c0))
         dt[nbout] = dt[nbout] * np.exp(-self.tl[nbout]  * np.float32(c1))
-
         return dt / np.sum(dt)
     
     def finalize(self):
         """
-        Write hypotheses and predictions into a file
+        Writes hypotheses and predictions into a file
         """
+        
+        """Creates a dictionary of rank,rounds pairs"""
         inverse = dict()
         rnk_list = list()
         for r in np.arange(self.pb.rounds):
@@ -110,6 +142,10 @@ class ConfidenceRatedBoosting(Boosting):
                 rnk_list.append(rnk)
                 pass
         
+        """
+        For each rank read the hypotheses space to update threshold and test
+        predictions
+        """
         for rnk in rnk_list:
             model_fp = self.pb.wd + "model_%s_%s.h5" % (self.pb.conf_num,rnk)
             try:
@@ -135,20 +171,28 @@ class ConfidenceRatedBoosting(Boosting):
         if self.pb.testEN:
             np.cumsum(self.test_predictions, axis=1, out=self.test_predictions)
         
-        
     def get_hypotheses(self):
         """
-        Return the hypotheses
+        Returns the hypotheses
         """
         return self.hypotheses
     
     def get_val_predictions(self):
+        """
+        Returns validation predictions
+        """
         return self.val_predictions
     
     def get_train_predictions(self):
+        """
+        Returns training predictions
+        """
         return self.train_predictions
     
     def get_test_predictions(self):
+        """
+        Returns testing predictions
+        """
         return self.test_predictions
         
 
@@ -157,9 +201,12 @@ class ConfidenceRatedWL(WeakLearner):
     def __init__(self, boosting_p):
         """
         
-        Decision Stump Implementation compatible with Confidence-Rated Boosting
+        Decision Stump Implementation compatible with Confidence Rated Boosting
         
-        boosting_p
+        Parameters
+        ----------
+
+        boosting_p : pboost.boost.process.Process object
             Boosting environment in which this algoritm runs
             
         """

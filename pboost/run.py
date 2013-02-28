@@ -4,8 +4,8 @@ try:
     from pboost.environment.pb import PBoost
 except ImportError:
     """
-    If parallel_boosting is not installed append parent directory of 
-    pboost.py into PYTHONPATH
+    If pboost is not installed append parent directory of 
+    run.py into PYTHONPATH and try again
     """
     sys.path.append(os.path.dirname(
                     os.path.dirname(os.path.realpath(__file__)))

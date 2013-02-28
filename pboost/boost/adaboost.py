@@ -9,7 +9,10 @@ class AdaBoost(Boosting):
         
         AdaBoost Implementation
         
-        boosting_p
+        Parameters
+        ----------
+
+        boosting_p : pboost.boost.process.Process object
             Boosting environment in which this algoritm runs
             
         """
@@ -21,6 +24,7 @@ class AdaBoost(Boosting):
         self.train_predictions = None
         self.test_predictions = None
 
+        """Create empty prediction matrices"""
         if self.process.classifyEN:
             if self.process.isXvalMain:
                 train_span = self.pb.train_ind2 - self.pb.train_ind1
@@ -34,33 +38,58 @@ class AdaBoost(Boosting):
                 if self.pb.isLeader and self.pb.xvalEN:
                     self.val_predictions = np.zeros(
                     [self.process.val_exam_no,self.pb.rounds],'float32')
-        
+
+        """Convert binary labesl to +1/-1 form"""
         self.tl = np.int16(np.copy(self.process.label))
         self.tl[self.process.label == 0] = -1
         
 
-    def run(self, dt, r, val, bout):
+    def run(self, dt, r, rnk, d1, d2, d3, d4, c0, c1, bout):
         """
         
         Run a single round of boosting
         
-        dt
-            Distribution over examples
-        r
+        
+        Parameters
+        ----------
+        
+        dt : numpy float array
+            Probability distribution over examples
+        
+        r : integer
             Round number
         
+        rnk : integer
+            Rank of the core containing best hyp in its space
+            
+        d1 : integer
+            Index of the best hypothesis
+        
+        d2 : integer
+            The relative index of the example where threshold is placed
+            
+        d3 : integer
+            The actual index of the example where threshold is placed
+            
+        d4 : integer
+            The actual index of the next example in threshold calculation
+        c0 : float
+            Prediction for values lower than threshold
+        
+        c1 : float
+            Prediction for values larger than threshold
+        
+        bout : numpy boolean array
+            Marker for each example best hyp making a mistake
+            
         Returns:
             Updated distribution over examples
 
         """
-        
-        """Find the weak learner with the least weighted error""" 
-        (rnk, d1, d2, d3, d4, c0, c1) = val[1:8]
-        rnk = int(rnk)
-        """Get the unsorted results for the hypothesis found by WL"""
-        v = 0.0
+
                 
-        """Create a dictionary for the hypothesis found in this round"""
+        """Create a dictionary for the best hypothesis"""
+        v = 0.0
         h = {'rnk':rnk,
              'd1':d1,
              'd2':d2,
@@ -71,6 +100,8 @@ class AdaBoost(Boosting):
              'c1':c1}
         
         self.hypotheses.append(h)
+        
+        """Update training and validation predictions"""
         if self.process.classifyEN:
             if self.process.isXvalMain:
                 pbout = bout[self.pb.train_ind1:self.pb.train_ind2]
@@ -88,6 +119,7 @@ class AdaBoost(Boosting):
                     self.val_predictions[:,r]=(self.val_predictions[:,r-1]
                                                    + s1 + s2)
         
+        """Update distribution over the examples"""
         nbout = np.logical_not(bout)
         dt[bout] = dt[bout] * np.exp(-self.tl[bout] * np.float32(c0))
         dt[nbout] = dt[nbout] * np.exp(-self.tl[nbout]  * np.float32(c1))
@@ -96,8 +128,10 @@ class AdaBoost(Boosting):
     
     def finalize(self):
         """
-        Write hypotheses and predictions into a file
+        Writes hypotheses and predictions into a file
         """
+        
+        """Creates a dictionary of rank,rounds pairs"""
         inverse = dict()
         rnk_list = list()
         for r in np.arange(self.pb.rounds):
@@ -110,6 +144,10 @@ class AdaBoost(Boosting):
                 rnk_list.append(rnk)
                 pass
         
+        """
+        For each rank read the hypotheses space to update threshold and test
+        predictions
+        """
         for rnk in rnk_list:
             model_fp = self.pb.wd + "model_%s_%s.h5" % (self.pb.conf_num,rnk)
             try:
@@ -135,20 +173,28 @@ class AdaBoost(Boosting):
         if self.pb.testEN:
             np.cumsum(self.test_predictions, axis=1, out=self.test_predictions)
         
-        
     def get_hypotheses(self):
         """
-        Return the hypotheses
+        Returns the hypotheses
         """
         return self.hypotheses
     
     def get_val_predictions(self):
+        """
+        Returns validation predictions
+        """
         return self.val_predictions
     
     def get_train_predictions(self):
+        """
+        Returns training predictions
+        """
         return self.train_predictions
     
     def get_test_predictions(self):
+        """
+        Returns testing predictions
+        """
         return self.test_predictions
         
 
@@ -159,16 +205,17 @@ class AdaBoostWL(WeakLearner):
         
         Decision Stump Implementation compatible with AdaBoost
         
-        boosting_p
+        Parameters
+        ----------
+
+        boosting_p : pboost.boost.process.Process object
             Boosting environment in which this algoritm runs
             
         """
         self.process = boosting_p
         self.pb = boosting_p.pb
 
-#        df = np.int32(np.cumsum(self.process.train_indices) * self.process.train_indices)
-#        self.__cf = np.int32(np.cumsum(self.process.train_indices))
-        
+        """Allocate memory for intermediate data matrices"""
         self.__index = self.pb.index_matrix
         self.__w00 = np.zeros(shape = self.__index.shape,dtype ="float32")
         self.__w01 = np.zeros(shape = self.__index.shape,dtype ="float32")
@@ -182,8 +229,11 @@ class AdaBoostWL(WeakLearner):
         
         Run a single round of weak learner
         
-        dt
-            Distribution over examples
+        Parameters
+        ----------
+        
+        dt : numpy float array
+            Probability distribution over examples
         
         Returns:
             A list of WL related information
@@ -196,20 +246,20 @@ class AdaBoostWL(WeakLearner):
             c1 : Prediction for values larger than threshold
         """
         
-        """Calculate the weighted error matrix for label=0 pred=0"""
-        
-        """Calculate the weighted error matrix for label=1 pred=0"""
         self.__cdnt = np.float32(dt * np.logical_not(self.process.label.T))
         self.__cdt = np.float32(dt * self.process.label.T)
+        """Calculate the weighted error matrix for label=0 pred=0"""
         self.__w00 = np.take(self.__cdnt, self.__index)
         np.cumsum(self.__w00, axis=1, dtype ="float32", out=self.__w00)
+        """Calculate the weighted error matrix for label=1 pred=0"""
         self.__w01 = np.take(self.__cdt, self.__index)
         np.cumsum(self.__w01, axis=1, dtype ="float32", out=self.__w01)
         w00_max = np.amax(self.__w00[:, -1])
         w01_max = np.amax(self.__w01[:, -1])
-        """Calculate the weighted error matrix and find the least error"""
+        """Calculate the weighted error matrix"""
         self.__err = evaluate("w00 - w01",local_dict = {'w00': self.__w00, 
                                                         'w01': self.__w01,})
+        """Find the hypothesis with the least error """
         e1 = w01_max + np.amin(self.__err)
         e2 = w00_max - np.amax(self.__err)
         if e1 < e2:
@@ -221,8 +271,6 @@ class AdaBoostWL(WeakLearner):
         
         (d1, d2) = np.unravel_index(err_ind, self.__err.shape)
 
-        """Calculate d1 d2 d3 d4"""
-        
         if d2 < self.process.train_exam_no - 1: 
             d3 = self.__index[d1, d2] 
             d4 = self.__index[d1, d2] 
@@ -230,7 +278,7 @@ class AdaBoostWL(WeakLearner):
             d3 = self.__index[d1, d2] 
             d4 = d3;
         
-        """Calculate c0 and c1"""
+        """Calculate labels c0 and c1"""
         eps = np.float32(1e-3 / self.process.train_exam_no);
         w00_bh = self.__w00[d1, d2]
         w01_bh = self.__w01[d1, d2]
@@ -247,6 +295,8 @@ class AdaBoostWL(WeakLearner):
             c1 = alpha
         else:
             c1 = -alpha
+            
+        """Calculate marker"""
         self.__bout[:] = False
         self.__bout[self.__index[d1,0:d2+1]] = True
         
