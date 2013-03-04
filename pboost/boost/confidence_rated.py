@@ -213,9 +213,6 @@ class ConfidenceRatedWL(WeakLearner):
         self.process = boosting_p
         self.pb = boosting_p.pb
 
-#        df = np.int32(np.cumsum(self.process.train_indices) * self.process.train_indices)
-#        self.__cf = np.int32(np.cumsum(self.process.train_indices))
-        
         self.__index = self.pb.index_matrix
         self.__w00 = np.zeros(shape = self.__index.shape,dtype ="float32")
         self.__w01 = np.zeros(shape = self.__index.shape,dtype ="float32")

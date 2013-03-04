@@ -58,7 +58,7 @@ and returns average of the data over these three columns. The second method, mak
 is about giving appropriate arguments to blueprint function to create features. 
 For BGL_Day_Av class, make method creates features by averaging the morning, 
 afternoon and evening Blood Glucose Level for each day in the dataset. One important
-detail is to call insert method for each feature. Finally one can specify several 
+detail is to call make method for each feature. Finally one can specify several 
 files each containing several Feature Factory classes. However all these files 
 should be in the working directory. 
 

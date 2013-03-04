@@ -1,4 +1,4 @@
-import sys,json,os,h5py,sqlite3,time
+import sys,json,os,h5py,sqlite3
 import numpy as np
 import inspect
 from pboost.feature.factory import BaseFeatureFactory
@@ -6,20 +6,31 @@ from pboost.feature.factory import BaseFeatureFactory
 class Extractor():
     def __init__(self, pb):
         """
-        Create a pre-processing object
-        Preparation and parsing the configuration file
+
+        Feature extractor class
+        
+        Parameters
+        ----------
+
+        pb : pboost.environment.pb object
+            Contains data related to whole program
+            
         """
         self.pb = pb
         total_feature_no = 0
         if pb.isLeader:
-            total_feature_no = self.make_features()
+            total_feature_no = self.produce_features()
         pb.sync_partition(total_feature_no = total_feature_no)
         pb.sync_xval_indices()
     
-    def make_features(self):
+    def produce_features(self):
         """
-        Populate behavior table
-        Obtain hypotheses by reading different arguments for each behavior
+        
+        Produce features for given feature factories and populate the 
+        database holding description of each particular feature
+        
+        Returns total feature number after populating db
+
         """
         conn = sqlite3.connect(self.pb.feature_db)
         c = conn.cursor()
@@ -37,14 +48,18 @@ class Extractor():
                 factory = factory_cls(data = traindata,
                                       db_path = self.pb.feature_db)
                 kwargs = self.pb.conf_dict['arbitrary']
-                factory.make(**kwargs)
+                factory.produce(**kwargs)
                 total_feature_no = factory.finalize()
         f.close()
         return total_feature_no
         
     def read_features(self): 
         """
-        Read behavior table and get the content information
+        
+        Read the related feature descriptions from the database 
+        
+        Returns list of feature descriptions
+
         """
         conn = sqlite3.connect(self.pb.feature_db)
         cursor = conn.cursor()
@@ -58,7 +73,11 @@ class Extractor():
                 
     def create_io_partition(self):
         """
-        Create pre-partition list for parallelization
+        
+        Creates IO partition of feature space to write data as chunks
+        
+        Returns a numpy array of border indices
+        
         """
         IO_LIMIT = 128e6
         if self.pb.testEN:
@@ -78,25 +97,29 @@ class Extractor():
     
     def extract(self):
         """
-        Apply every function to every example and sort
-        Write the result to the function output
-        Write the sorted column sorting tables
+        
+        Applies features to training and testing data and writes the results 
+        to the specified model file. Updates the index_matrix of pboost. 
+
         """
 
         all_features = self.read_features()
+        
+        """Create model file and necessary datasets"""
         model_file = h5py.File(self.pb.model_fp,'w')
         io_index = model_file.create_dataset("index",
                                   self.pb.index_matrix.shape,
                                   self.pb.index_matrix.dtype)
         io_train = model_file.create_dataset("train_unsorted",
                                   self.pb.index_matrix.shape,
-                                  "float32")  
+                                  "float32")
         if self.pb.testEN:
             io_test = model_file.create_dataset("test_unsorted",
                                       (self.pb.features_span,
                                        self.pb.test_exam_no),
                                        "float32")  
 
+        """Read training and testing data"""
         train_file = h5py.File(self.pb.train_fp,'r')
         traindata = train_file['data']
         if self.pb.testEN:

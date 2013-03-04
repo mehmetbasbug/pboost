@@ -14,11 +14,14 @@ class BaseFeatureFactory(object):
 		raise NotImplementedError("Error : "+
 						"Should have implemented a blueprint method")
 	
-	def make(self):
+	def produce(self):
 		raise NotImplementedError("Error : " +
-						"Should have implemented a make method")
+						"Should have implemented a produce method")
 	
-	def insert(self, *args):
+	def make(self, *args):
+		"""
+		DO NOT OVERRIDE THIS METHOD
+		"""
 		argstr = json.dumps(args)
 		statement = "INSERT INTO features VALUES ('" +self.cls_path+"','"+self.cls_name+"','"+argstr+"')"
 		self.cursor.execute(statement)
@@ -33,7 +36,7 @@ class DefaultFeatureFactory(BaseFeatureFactory):
 	def blueprint(self,attr):
 		return self.data[:,attr]
 	
-	def make(self):
+	def produce(self):
 		for k in range(0, self.data.shape[1]-2):
 			attribute = k
-			self.insert(attribute)
+			self.make(attribute)

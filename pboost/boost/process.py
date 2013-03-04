@@ -9,6 +9,9 @@ class Process():
         
         Set up the environment for a boosting process
         
+        Parameters
+        ----------
+        
         pb : pboost.environment.pb object
             Contains data related to whole program
             
@@ -40,9 +43,11 @@ class Process():
             self.val_label = self.label[self.val_indices]
             self.val_exam_no = sum(self.val_indices)
     
-    def compute(self):
+    def run(self):
         """
+        
         Run the boosting process with given parameters.
+        
         """
         if self.pb.xvalEN and not self.isXvalMain:
             dt = np.ones(self.pb.total_exam_no,
@@ -85,6 +90,7 @@ class Process():
         if self.isXvalMain:
             boosting.finalize()
         
+        """Sync the predictions and save them to a file"""
         if self.pb.isLeader:
             if self.pb.xvalEN and not self.isXvalMain:
                 val_predictions = boosting.get_val_predictions()
