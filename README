@@ -43,11 +43,11 @@ C.CREATING YOUR CONFIGURATION FILE
 -------------------------------------------------------------------------------
 The recommended way is appending your new configurations to configurations.cfg file in pboost folder. Alternatively you can create an empty text file with the extension of cfg. A shorter explanation of options can be found in configurations.cfg file. For the detailed explanations see below:
 
-# train_file 	= [HDF5 File]
+# train_file    = [HDF5 File]
 #                 Raw file of examples and their attributes for training 
 #                 (Must be specified)
 #
-# test_file 	= [HDF5 File]
+# test_file     = [HDF5 File]
 #                 Raw file of examples and their attributes for testing
 #                 (Optional)
 
@@ -58,7 +58,8 @@ If a separate 'label' dataset is not given, the program will assume the last col
 If there is no separate test dataset, please leave test_data option blank.
 
 # factory_files = [.py File(s), separated by comma] 
-#                 File(s) containing the concrete implementations of the BaseFeatureFactory class
+#                 File(s) containing the concrete implementations of 
+#                 the BaseFeatureFactory class
 #                 (Leaving blank will include default implementation)
 
 factory_files option refers to the files containing user defined feature factories. See examples of Feature Factory classes in diabetes_feature_factory.py file in demo folder.
@@ -72,12 +73,13 @@ Each user defined Feature Factory class should inherit from BaseFeatureFactory a
 
 # working_dir 	= [string]
 #                 Path to a shared disk location containing data files, factory files 
-#                 (Leaving blank will set this field to the same directory as this file)
+#                 (Leaving blank will set it to the same directory as this file)
 
 Working directory should be on a shared disk space. Data files and feature factory files should be put in that directory.
 
 # algorithm 	= [string] 
-#                 Boosting algorithm to use. Current options are "conf-rated" and "adaboost"
+#                 Boosting algorithm to use. 
+#                 Current options are "conf-rated" and "adaboost"
 #                 (Leaving blank will set this field to "conf-rated")
 
 Currently only "Adaboost" and "Confidence Rated Boosting" are supported. The second one is recommended as it is likely to converge faster.
@@ -89,8 +91,8 @@ Currently only "Adaboost" and "Confidence Rated Boosting" are supported. The sec
 The runtime of the program is directly proportional to the number of rounds. It is recommended not give a very large number; training error of boosting usually converges with a moderate number of rounds and a large number might cause over fitting.
 
 # xval_no 		= [integer] 
-#                 Number of cross-validation folds or leaving blank signifies no cross-validation
-#                 (Leaving blank will set this number to 1, that is disable cross validation)
+#                 Number of cross-validation folds
+#                 (Leaving blank will set it to 1, that is disabling x validation)
 
 In order to have k-fold cross validation, set this number to k. Cross validation is useful when you do not have a separate testing dataset. In this case, validation error might be a good estimate of testing error. A large number should be avoided, as it will increase the runtime. For k-fold cross validation pboost will train k+1 algorithms, meaning that it will take k times longer compared to not using cross validation.
 
@@ -115,7 +117,7 @@ run.py takes two arguments cp and cn
   
 A typical command to run pboost looks like 
  
-mpirun -np NUMBER_OF_PROCESSORS python run.py -cp PATH_TO_CONF_FILE CONF_NUM_1 CONF_NUM2
+mpirun -np NUMBER_OF_PROCESSORS python run.py -cp CONF_PATH CONF_NUM_1 CONF_NUM2
 
 The default setting for cp is '~/pboost/configurations.cfg'
 
@@ -124,6 +126,6 @@ The output of the program will be in the folder out_{CONF_NUM} in working direct
 feature factory files : All Feature Factory Files necessary to make necessary features
 final_classifier.py : A script to classify any given raw data
 hypotheses.npy : Data file containing hypotheses found by pboost
-dump.npz : Data file containing predictions and other information about the pboost job
+dump.npz : Data file containing predictions and other information about the job
 
 One can generate plots using plot.py and giving dump.npz as input to that script
