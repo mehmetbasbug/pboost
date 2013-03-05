@@ -1,5 +1,6 @@
 from setuptools import setup, find_packages
 import os,shutil
+from pwd import getpwnam
 
 readme_file = 'README'
 version = __import__('pboost').get_version()
@@ -38,21 +39,34 @@ setup(name='pboost',
 existing_path = os.path.abspath(__import__('pboost').__file__)
 existing_path,tail = os.path.split(existing_path)
 if os.name == "posix":
+    eff_username = os.getenv(key='SUDO_USER', default='root')
+    uid = getpwnam(eff_username).pw_uid
+    gid = getpwnam(eff_username).pw_gid
     pb_fp = os.path.join(os.path.expanduser('~'),'pboost')
     if not os.path.exists(pb_fp):
         os.mkdir(pb_fp)
+    
     dest = os.path.join(pb_fp, "run.py")
     src = os.path.join(existing_path, "run.py")
     shutil.copyfile(src,dest)
+    
     dest = os.path.join(pb_fp, "plot.py")
     src = os.path.join(existing_path, "plot.py")
     shutil.copyfile(src,dest)
+    
     dest = os.path.join(pb_fp, "configurations.cfg")
     src = os.path.join(existing_path, "demo/configurations.cfg")
     shutil.copyfile(src,dest)
+    
     dest = os.path.join(pb_fp, "demo")
     if not os.path.exists(dest):
         src = os.path.join(existing_path, "demo")
         shutil.copytree(src,dest)
-
+    
+    for root, dirs, files in os.walk(pb_fp):  
+        os.chown(root, uid, gid)
+        for momo in dirs:  
+            os.chown(os.path.join(root, momo), uid, gid)
+        for momo in files:
+            os.chown(os.path.join(root, momo), uid, gid)
     
