@@ -130,6 +130,8 @@ class Extractor():
         current_fp =  None
         io_partition = self.create_io_partition()
         io_ind = 0
+        
+        """Process a single io chunk at a time"""
         for io_ind in np.arange(len(io_partition)-1):
             io_current = io_partition[io_ind]
             io_next = io_partition[io_ind+1]
@@ -146,6 +148,7 @@ class Extractor():
                 fp = feature_def[0]
                 cls = feature_def[1]
                 params = feature_def[2]
+                """Create a new Feature object only when necessary"""
                 if fp != current_fp or cls != current_cls:
                     current_fp = fp
                     current_cls = cls
@@ -159,9 +162,11 @@ class Extractor():
                 if self.pb.testEN:
                     test_vals = test_feature.apply(params = params)
                     test_chunk[feature_ind,:] = test_vals
+                """Store sorting indices"""
                 ind = np.argsort(train_vals)
                 index_chunk[feature_ind,:] = ind
                 feature_ind = feature_ind + 1
+            """Update related data structures as chunks"""
             io_index[io_current:io_next,:] = index_chunk
             io_train[io_current:io_next,:] = train_chunk
             if self.pb.testEN:
@@ -174,13 +179,29 @@ class Extractor():
             test_file.close()
         
 class Feature():
-    
     def __init__(self,
                  data,
                  filepath = None,
                  cls_name = None,
                  feature_def = None,
                  ):
+        """
+
+        Feature class
+        
+        Parameters
+        ----------
+
+        data : HDF5 handler
+            train or test data handler
+        filepath : String, optional
+            filepath to a file containing FeatureFactory class
+        cls_name : String, optional
+            FeatureFactory class name
+        feature_def : List , optional
+            List of filepath,cls_name and parameters
+            
+        """
         if feature_def:
             self.filepath = feature_def[0]
             self.cls_name = feature_def[1]
@@ -197,6 +218,17 @@ class Feature():
         self.fc =  feat_cls(data)
     
     def apply(self,params):
+        """
+
+        Returns the result of feature with given parameters
+        
+        Parameters
+        ----------
+
+        params : List
+            List of arguments
+            
+        """
         args = json.loads(params)
         return self.fc.blueprint(*args)
 
@@ -205,6 +237,22 @@ class FactoryFile():
                  factory_class_names = None,
                  factory_classes = None,
                  fp = None):
+        """
+
+        Factory File class
+        
+        Parameters
+        ----------
+
+        factory_class_names : List of Strings, optional
+            names of classes in the file
+        factory_classes : List of pboost.feature.factory.BaseFactoryFile 
+                          objects, optional
+            classes in the file
+        fp : String, optional
+            Filepath to the factory file
+            
+        """
         self.factory_class_names = list()
         self.factory_classes = list()
         if fp is not None:
@@ -216,6 +264,17 @@ class FactoryFile():
             raise Exception("Must specify a filepath or factory classes")
         
     def _create_with_fp(self,fp):
+        """
+
+        Creates Factory File object using filepath
+        
+        Parameters
+        ----------
+
+        fp : String
+            Filepath to the factory file
+        
+        """
         sys.path.append(fp)
         head,tail = os.path.split(fp)
         root,ext = os.path.splitext(tail)
@@ -242,7 +301,15 @@ class FactoryFileIterator():
     
     def __init__(self,factory_files):
         """
-        Initialize a FactoryFileIterator object to parse behavior files
+
+        Creates Factory File Iterator object
+        
+        Parameters
+        ----------
+
+        factory_files : List of Strings
+            Filepaths to feature factory files
+        
         """
         self.factory_files = factory_files
         self.__last = len(factory_files)
@@ -253,7 +320,10 @@ class FactoryFileIterator():
     
     def get_next(self):
         """
-        Return the module and the list of blueprintd classes in this module
+        
+        Creates the next FactoryFile object in the list
+        Returns the object
+    
         """
         factory_fp = self.factory_files[self.__current]
         if factory_fp == "default":
