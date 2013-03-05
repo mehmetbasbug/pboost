@@ -2,6 +2,7 @@ pboost.egg-info/*
 dist/*
 build/*
 demo/out_*
+MANIFEST.in
 *.py~
 *.pyc
 *.project
