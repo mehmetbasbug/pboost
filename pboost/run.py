@@ -17,9 +17,9 @@ if __name__ == '__main__':
     argparser = argparse.ArgumentParser(
                 description='Runs pboost for the specified configuration ')
     
-    argparser.add_argument('conf_path', 
-                           metavar='cp', 
+    argparser.add_argument('--conf_path','-cp',
                            type=str,
+                           default='~/pboost/configurations.cfg',
                            help='Path to the configuration file')
     argparser.add_argument('conf_nums', 
                            metavar='cn', 
@@ -27,7 +27,7 @@ if __name__ == '__main__':
                            nargs='+',
                            help='Configuration numbers to process')
     args = argparser.parse_args()
-    conf_path = os.path.realpath(args.conf_path)
+    conf_path = os.path.realpath(os.path.expanduser(args.conf_path))
     comm = MPI.COMM_WORLD
     for conf_num in args.conf_nums:
         try:

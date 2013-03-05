@@ -60,7 +60,7 @@ def get_configuration(conf_num, conf_path = "./configurations.cfg"):
         my_dict['algorithm'] = "conf-rated"
 
     if my_dict['rounds'] == None:
-        my_dict['rounds'] = 20
+        my_dict['rounds'] = 100
 
     if my_dict['xval_no'] == None:
         my_dict['xval_no'] = 1

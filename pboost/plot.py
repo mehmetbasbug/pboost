@@ -23,8 +23,7 @@ if __name__ == '__main__':
                            type=str,
                            nargs='+',
                            help='Path to the result file')
-    argparser.add_argument('--report_only', 
-                           metavar='-ro', 
+    argparser.add_argument('--report_only','-ro', 
                            type=str,
                            default='n',
                            help='y : report only n : show plots(default)')

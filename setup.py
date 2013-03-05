@@ -47,6 +47,9 @@ if os.name == "posix":
     dest = os.path.join(pb_fp, "plot.py")
     src = os.path.join(existing_path, "plot.py")
     shutil.copyfile(src,dest)
+    dest = os.path.join(pb_fp, "configurations.cfg")
+    src = os.path.join(existing_path, "demo/configurations.cfg")
+    shutil.copyfile(src,dest)
     dest = os.path.join(pb_fp, "demo")
     if not os.path.exists(dest):
         src = os.path.join(existing_path, "demo")
