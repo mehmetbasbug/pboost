@@ -1,9 +1,11 @@
 *******************************************************************************
 PBOOST : Parallel Implementation of Boosting Algorithms with MPI
 
-February 2013
+Mehmet Basbug
+PhD Candidate
 Princeton University
 
+February 2013
 *******************************************************************************
 
 A.QUICK INSTALL
@@ -17,6 +19,11 @@ OR
 easy_install pboost
 
 This will also create a directory named 'pboost' in your home folder.
+
+This should work fine for many users; however, you may be missing some required libraries. On Debian/Ubuntu run the following command first (add sudo if necessary)
+
+apt-get install build-essential python-dev python-setuptools python-pip python-numpy python-scipy python-matplotlib openmpi-bin openmpi-doc libopenmpi-dev libhdf5-serial-dev
+
 
 B.RUNNING DEMO
 -------------------------------------------------------------------------------

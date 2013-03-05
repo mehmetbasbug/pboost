@@ -230,7 +230,7 @@ def report_results(working_dir = None,
                    test_predictions = None, 
                    test_label = None, 
                    validation_predictions = None, 
-                   xval_indices = None, 
+                   xval_indices = None,
                    filename = None):
     if filename:
         f = np.load(filename)
@@ -243,7 +243,6 @@ def report_results(working_dir = None,
             test_label = f['test_label']
         if xvalEN:
             validation_predictions = f['validation_predictions']
-        xval_indices = f['xval_indices']
 
     if testEN:
         if xvalEN:
@@ -365,8 +364,8 @@ def plot_data(working_dir = None,
             test_label = f['test_label']
         if xvalEN:
             validation_predictions = f['validation_predictions']
-        xval_indices = f['xval_indices']
 
+            
     if testEN:
         if xvalEN:
             """1) ROC plot based on combined validation error"""
