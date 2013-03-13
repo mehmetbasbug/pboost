@@ -326,6 +326,22 @@ def plot_data(working_dir = None,
                                     != np.sign(test_predictions[:, k])
                                     )/np.float32(test_exam_no)
 
+            training_err = sum((2*train_label-1) 
+                                 != np.sign(train_predictions[:, -1])
+                                 )/np.float32(train_exam_no)
+            print ("Info : Training Error of the final classifier : "+ 
+                   str(training_err))
+            val_err = sum((2*train_label-1) 
+                            != np.sign(validation_predictions[:,-1])
+                            )/np.float32(train_exam_no)
+            print ("Info : Validation Error of the final classifier : "+ 
+                   str(val_err))
+            test_err = sum((2*test_label-1) 
+                             != np.sign(test_predictions[:,-1])
+                             )/np.float32(test_exam_no)            
+            print ("Info : Testing Error of the final classifier : "+ 
+                   str(test_err))
+            
             """Plotting using draw since it's non-blocking"""
             if not only_save:
                 plt.figure()
@@ -397,6 +413,17 @@ def plot_data(working_dir = None,
                                     != np.sign(test_predictions[:, k])
                                     )/np.float32(test_exam_no)
             
+            training_err = sum((2*train_label-1) 
+                                 != np.sign(train_predictions[:, -1])
+                                 )/np.float32(train_exam_no)
+            print ("Info : Training Error of the final classifier : "+ 
+                   str(training_err))
+            test_err = sum((2*test_label-1) 
+                             != np.sign(test_predictions[:,-1])
+                             )/np.float32(test_exam_no)            
+            print ("Info : Testing Error of the final classifier : "+ 
+                   str(test_err))
+            
             if not only_save:
                 plt.figure()
                 plt.subplot(1,2,1)
@@ -452,6 +479,18 @@ def plot_data(working_dir = None,
                 val_error[k] = sum((2*train_label-1) 
                                    != np.sign(validation_predictions[:, k])
                                    )/np.float32(train_exam_no) 
+            
+            training_err = sum((2*train_label-1) 
+                                 != np.sign(train_predictions[:, -1])
+                                 )/np.float32(train_exam_no)
+            print ("Info : Training Error of the final classifier : "+ 
+                   str(training_err))
+            val_err = sum((2*train_label-1) 
+                            != np.sign(validation_predictions[:,-1])
+                            )/np.float32(train_exam_no)
+            print ("Info : Validation Error of the final classifier : "+ 
+                   str(val_err))
+            
             if not only_save:
                 plt.figure()
                 plt.subplot(1,2,1)
@@ -490,6 +529,13 @@ def plot_data(working_dir = None,
                 training_error[k] = sum((2*train_label-1) 
                                         != np.sign(train_predictions[:, k])
                                         )/np.float32(train_exam_no)
+            
+            training_err = sum((2*train_label-1) 
+                                 != np.sign(train_predictions[:, -1])
+                                 )/np.float32(train_exam_no)
+            print ("Info : Training Error of the final classifier : "+ 
+                   str(training_err))
+            
             """Plotting using draw since it's non-blocking"""
             plt.figure()
             plt.plot(range(rounds), training_error)
