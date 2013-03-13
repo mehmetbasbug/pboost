@@ -1,5 +1,7 @@
 import os, shutil, glob, inspect,sqlite3
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from pboost.report import pyroc
 from pboost.report import final_classifier_script
