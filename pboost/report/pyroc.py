@@ -84,7 +84,7 @@ def _remove_duplicate_styles(rocList):
 
 
 
-def plot_multiple_roc(rocList,title='',labels=None, include_baseline=False, equal_aspect=True):
+def plot_multiple_roc(rocList,filename,title='',labels=None, include_baseline=False, equal_aspect=True,only_save = True):
     """ Plots multiple ROC curves on the same chart. 
         Parameters:
             rocList: the list of ROCData objects
@@ -114,8 +114,9 @@ def plot_multiple_roc(rocList,title='',labels=None, include_baseline=False, equa
         pylab.plot([0.0,1.0], [0.0, 1.0], 'k-', label= 'random')
     if labels:
         pylab.legend(loc='lower right')
-
-    pylab.draw()
+    pylab.savefig(filename)
+    if not only_save:
+        pylab.draw()
 
 
 def load_decision_function(path):
@@ -247,7 +248,7 @@ class ROCData(object):
                         (Nn - 1.0) * (Q2 - area * area)) / (Na * Nn))
 
 
-    def plot(self,title='',include_baseline=False,equal_aspect=True):
+    def plot(self,filename,title='',include_baseline=False,equal_aspect=True,only_save = True):
         """ Method that makes a plot of the ROC curve 
             Parameters:
                 title: Title of the chart
@@ -270,9 +271,9 @@ class ROCData(object):
         pylab.xlabel('1 - Specificity')
         pylab.ylabel('Sensitivity')
         pylab.title(title)
-
-        pylab.draw()
-
+        pylab.savefig(filename)
+        if not only_save:
+            pylab.draw()
 
     def confusion_matrix(self,threshold,do_print=False):
         """ Returns the confusion matrix (in dictionary form) for a fiven threshold

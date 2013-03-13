@@ -2,7 +2,7 @@ import sys, os
 import argparse
 
 try:
-    from pboost.report.reporter import plot_data,report_results
+    from pboost.report.reporter import plot_data
 except ImportError:
     """
     If pboost is not installed append parent directory of 
@@ -11,7 +11,7 @@ except ImportError:
     sys.path.append(os.path.dirname(
                     os.path.dirname(os.path.realpath(__file__)))
                     )
-    from pboost.report.reporter import plot_data,report_results
+    from pboost.report.reporter import plot_data
     pass
 
 if __name__ == '__main__':
@@ -32,6 +32,8 @@ if __name__ == '__main__':
     for filepath in args.filepaths:
         filepath = os.path.realpath(filepath)
         if args.report_only == 'y':
-            report_results(filename = filepath)
+            plot_data(filename = filepath,
+                      only_save = True)
         else:
-            plot_data(filename = filepath)
+            plot_data(filename = filepath,
+                      only_save = False)

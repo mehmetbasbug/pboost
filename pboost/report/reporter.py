@@ -136,19 +136,40 @@ class Reporter():
         Decide which plots to present based on the configuration 
         file in use and plot them
         """
-        plot_data(self.pb.wd, self.pb.algorithm, self.pb.rounds, self.pb.total_exam_no, 
-                  self.pb.test_exam_no,self.pb.testEN, self.pb.xval_no, self.pb.xvalEN, 
-                  self.train_predictions, self.train_label,
-                  self.test_predictions,self.test_label, 
-                  self.validation_predictions, self.pb.xval_indices)
+        plot_data(working_dir = self.pb.wd,
+                  alg = self.pb.algorithm, 
+                  rounds = self.pb.rounds, 
+                  train_exam_no = self.pb.total_exam_no, 
+                  test_exam_no = self.pb.test_exam_no, 
+                  testEN = self.pb.testEN, 
+                  xval_no = self.pb.xval_no, 
+                  xvalEN = self.pb.xvalEN,
+                  train_predictions = self.train_predictions, 
+                  train_label = self.train_label, 
+                  test_predictions = self.test_predictions, 
+                  test_label = self.test_label, 
+                  validation_predictions = self.validation_predictions, 
+                  xval_indices = self.pb.xval_indices, 
+                  filename = None,
+                  only_save = False)
         
     def report(self):
-        report_results(self.pb.wd, self.pb.algorithm, self.pb.rounds, 
-                       self.pb.total_exam_no, self.pb.test_exam_no,self.pb.testEN, 
-                       self.pb.xval_no, self.pb.xvalEN, 
-                       self.train_predictions, self.train_label,
-                       self.test_predictions,self.test_label, 
-                       self.validation_predictions, self.pb.xval_indices)            
+        plot_data(working_dir = self.pb.wd,
+                  alg = self.pb.algorithm, 
+                  rounds = self.pb.rounds, 
+                  train_exam_no = self.pb.total_exam_no, 
+                  test_exam_no = self.pb.test_exam_no, 
+                  testEN = self.pb.testEN, 
+                  xval_no = self.pb.xval_no, 
+                  xvalEN = self.pb.xvalEN,
+                  train_predictions = self.train_predictions, 
+                  train_label = self.train_label, 
+                  test_predictions = self.test_predictions, 
+                  test_label = self.test_label, 
+                  validation_predictions = self.validation_predictions, 
+                  xval_indices = self.pb.xval_indices, 
+                  filename = None,
+                  only_save = True)
     
     def create_exec(self):
         """ Create a directory of files for a stand-alone final classifier """
@@ -216,113 +237,6 @@ class Reporter():
         self.dump()
         self.create_exec()
         self.clean()
-        
-def report_results(working_dir = None,
-                   alg = None, 
-                   rounds = None, 
-                   train_exam_no = None, 
-                   test_exam_no = None, 
-                   testEN = None, 
-                   xval_no = None, 
-                   xvalEN = None,
-                   train_predictions = None, 
-                   train_label = None, 
-                   test_predictions = None, 
-                   test_label = None, 
-                   validation_predictions = None, 
-                   xval_indices = None,
-                   filename = None):
-    if filename:
-        f = np.load(filename)
-        (working_dir, alg, rounds, train_exam_no, 
-         test_exam_no, testEN, xval_no, xvalEN) = f['meta']
-        train_predictions = f['train_predictions']
-        train_label = f['train_label']
-        if testEN:
-            test_predictions = f['test_predictions']
-            test_label = f['test_label']
-        if xvalEN:
-            validation_predictions = f['validation_predictions']
-
-    if testEN:
-        if xvalEN:
-            """1) ROC plot based on combined validation error"""
-            last_round = validation_predictions[:,-1]
-            z1 = zip(train_label, last_round)
-            roc1 = pyroc.ROCData(z1)
-            print("Info : Confusion matrix for combined validation "
-                    +"error with zero threshold :")    
-            print(roc1.confusion_matrix(0))        
-
-            """2) ROC plot based on testing error"""
-            last_round = test_predictions[:,-1]
-            z2 = zip(test_label, last_round)
-            roc2 = pyroc.ROCData(z2)
-            print("Info : Confusion matrix for testing "
-                    +"error with zero threshold :")    
-            print(roc2.confusion_matrix(0))        
-            
-            training_error = sum((2*train_label-1) 
-                                 != np.sign(train_predictions[:, -1])
-                                 )/np.float32(train_exam_no)
-            print ("Info : Training Error of the final classifier : "+ 
-                   str(training_error))
-            val_error = sum((2*train_label-1) 
-                            != np.sign(validation_predictions[:,-1])
-                            )/np.float32(train_exam_no)
-            print ("Info : Validation Error of the final classifier : "+ 
-                   str(val_error))
-            test_error = sum((2*test_label-1) 
-                             != np.sign(test_predictions[:,-1])
-                             )/np.float32(test_exam_no)            
-            print ("Info : Testing Error of the final classifier : "+ 
-                   str(test_error))
-            
-        else:
-            """1) ROC plot based on testing error"""
-            last_round = test_predictions[:,-1]
-            z = zip(test_label, last_round)
-            roc = pyroc.ROCData(z)
-            print("Info : Confusion matrix for combined validation "
-                    +"error with zero threshold :")  
-            print(roc.confusion_matrix(0))
-
-            training_error = sum((2*train_label-1) 
-                                 != np.sign(train_predictions[:, -1])
-                                 )/np.float32(train_exam_no)
-            print ("Info : Training Error of the final classifier : "+ 
-                   str(training_error))
-            test_error = sum((2*test_label-1) 
-                             != np.sign(test_predictions[:,-1])
-                             )/np.float32(test_exam_no)            
-            print ("Info : Testing Error of the final classifier : "+ 
-                   str(test_error))
-    else:
-        if xvalEN:
-            """1) ROC plot based on combined validation error"""
-            last_round = validation_predictions[:,-1]
-            z = zip(train_label, last_round)
-            roc = pyroc.ROCData(z)
-            print("Info : Confusion matrix for combined validation "
-                    +"error with zero threshold :")  
-            print(roc.confusion_matrix(0))                 
-
-            training_error = sum((2*train_label-1) 
-                                 != np.sign(train_predictions[:, -1])
-                                 )/np.float32(train_exam_no)
-            print ("Info : Training Error of the final classifier : "+ 
-                   str(training_error))
-            val_error = sum((2*train_label-1) 
-                            != np.sign(validation_predictions[:,-1])
-                            )/np.float32(train_exam_no)
-            print ("Info : Validation Error of the final classifier : "+ 
-                   str(val_error))
-        else:
-            training_error = sum((2*train_label-1) 
-                                 != np.sign(train_predictions[:, -1])
-                                 )/np.float32(train_exam_no)
-            print ("Info : Training Error of the final classifier : "+ 
-                   str(training_error))
 
 def plot_data(working_dir = None,
               alg = None, 
@@ -338,7 +252,8 @@ def plot_data(working_dir = None,
               test_label = None, 
               validation_predictions = None, 
               xval_indices = None, 
-              filename = None):
+              filename = None,
+              only_save = False):
     """ 
     Stand-alone method that can be used to plot the data. 
     It takes information needed either from a file, or a reporting object 
@@ -364,7 +279,10 @@ def plot_data(working_dir = None,
             test_label = f['test_label']
         if xvalEN:
             validation_predictions = f['validation_predictions']
-
+            
+        basepath = os.path.realpath("./")
+    else:
+        basepath = working_dir
             
     if testEN:
         if xvalEN:
@@ -383,10 +301,12 @@ def plot_data(working_dir = None,
             print("Info : Confusion matrix for testing "
                     +"error with zero threshold :")    
             print(roc2.confusion_matrix(0))        
-
-            pyroc.plot_multiple_roc(rocList = (roc1, roc2), title='ROC Curve',
-                    labels = ("validation error curve","testing error curve"))
-
+            
+            pyroc.plot_multiple_roc(filename = basepath + "roc.tif",
+                                    rocList = (roc1, roc2), 
+                                    title='ROC Curve',
+                                    labels = ("validation error curve","testing error curve"),
+                                    only_save = only_save)
             
             """3) Plot training error against number of rounds"""
             training_error = np.zeros(shape = [rounds,1] , dtype = "float32")
@@ -410,7 +330,9 @@ def plot_data(working_dir = None,
             plt.xlabel('number of rounds')
             plt.ylabel('training error')
             plt.title('Training Error vs. Number of Rounds')
-            plt.draw()                      
+            plt.savefig(filename = basepath + "training_err.tif")
+            if not only_save:
+                plt.draw()                    
 
             """4) Plot test error against number of rounds"""
             plt.subplot(2,2,2)
@@ -418,7 +340,9 @@ def plot_data(working_dir = None,
             plt.xlabel('number of rounds')
             plt.ylabel('validation error')
             plt.title('Validation Error vs. Number of Rounds')
-            plt.draw()
+            plt.savefig(filename = basepath + "validation_err.tif")
+            if not only_save:
+                plt.draw()                    
 
             """5) Plot test error against number of rounds"""
             plt.subplot(2,2,3)
@@ -426,17 +350,21 @@ def plot_data(working_dir = None,
             plt.xlabel('number of rounds')
             plt.ylabel('testing error')
             plt.title('Testing Error vs. Number of Rounds')             
-            plt.draw()
+            plt.savefig(filename = basepath + "testing_err.tif")
+            if not only_save:
+                plt.draw()                    
 
             """show is blocking, and is called after all graphs are created"""
-            plt.show()
-
+            if not only_save:
+                plt.show()
         else:
             """1) ROC plot based on testing error"""
             last_round = test_predictions[:,-1]
             z = zip(test_label, last_round)
             roc = pyroc.ROCData(z)
-            roc.plot(title='Testing Error ROC Curve')
+            roc.plot(filename = basepath+"roc.tif",
+                     title='Testing Error ROC Curve',
+                     only_save = only_save)
             print("Info : Confusion matrix for combined validation "
                     +"error with zero threshold :")  
             print(roc.confusion_matrix(0))
@@ -457,7 +385,9 @@ def plot_data(working_dir = None,
             plt.xlabel('number of rounds')
             plt.ylabel('training error')
             plt.title('Training Error vs. Number of Rounds')
-            plt.draw()
+            plt.savefig(filename = basepath + "training_err.tif")
+            if not only_save:
+                plt.draw()   
 
             """3) Plot test error against number of rounds"""
             plt.subplot(1,2,2)
@@ -465,16 +395,21 @@ def plot_data(working_dir = None,
             plt.xlabel('number of rounds')
             plt.ylabel('testing error')
             plt.title('Testing Error vs. Number of Rounds')                
-            plt.draw()
+            plt.savefig(filename = basepath + "testing_err.tif")
+            if not only_save:
+                plt.draw()   
 
-            plt.show()
+            if not only_save:
+                plt.show()
     else:
         if xvalEN:
             """1) ROC plot based on combined validation error"""
             last_round = validation_predictions[:,-1]
             z = zip(train_label, last_round)
             roc = pyroc.ROCData(z)
-            roc.plot(title='Validation Error ROC Curve')
+            roc.plot(filename = basepath+"roc.tif",
+                     title='Validation Error ROC Curve',
+                     only_save = only_save)
             print("Info : Confusion matrix for combined validation "
                     +"error with zero threshold :")  
             print(roc.confusion_matrix(0))                 
@@ -495,17 +430,22 @@ def plot_data(working_dir = None,
             plt.xlabel('number of rounds')
             plt.ylabel('training error')
             plt.title('Training Error vs. Number of Rounds')
-            plt.draw()
-
+            plt.savefig(filename = basepath + "training_err.tif")
+            if not only_save:
+                plt.draw()   
+                
             """3) Plot combined validation error against number of rounds"""
             plt.subplot(1,2,2)
             plt.plot(range(rounds), val_error)
             plt.xlabel('number of rounds')
             plt.ylabel('validation error')
             plt.title('Validation Error vs. Number of Rounds')                
-            plt.draw()
-            
-            plt.show()
+            plt.savefig(filename = basepath + "validation_err.tif")
+            if not only_save:
+                plt.draw()   
+
+            if not only_save:
+                plt.show()
         else:
             """1) Plot training error against number of rounds"""
             training_error = np.zeros(shape = [rounds,1] , dtype = "float32")
@@ -517,6 +457,7 @@ def plot_data(working_dir = None,
             plt.xlabel('number of rounds')
             plt.ylabel('training error')
             plt.title('Training Error vs. Number of Rounds')                
-            plt.draw()
-            
-            plt.show()
+            plt.savefig(filename = basepath + "training_err.tif")
+            if not only_save:
+                plt.draw()
+                plt.show()
