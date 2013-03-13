@@ -151,6 +151,7 @@ class Reporter():
                   validation_predictions = self.validation_predictions, 
                   xval_indices = self.pb.xval_indices, 
                   filename = None,
+                  basepath = self.out_fp,
                   only_save = False)
         
     def report(self):
@@ -169,6 +170,7 @@ class Reporter():
                   validation_predictions = self.validation_predictions, 
                   xval_indices = self.pb.xval_indices, 
                   filename = None,
+                  basepath = self.out_fp,
                   only_save = True)
     
     def create_exec(self):
@@ -253,6 +255,7 @@ def plot_data(working_dir = None,
               validation_predictions = None, 
               xval_indices = None, 
               filename = None,
+              basepath = None,
               only_save = False):
     """ 
     Stand-alone method that can be used to plot the data. 
@@ -279,9 +282,9 @@ def plot_data(working_dir = None,
             test_label = f['test_label']
         if xvalEN:
             validation_predictions = f['validation_predictions']
-            
-        basepath = os.path.realpath("./")
-    else:
+        if not basepath:
+            basepath = os.path.realpath("./")
+    elif not basepath:
         basepath = working_dir
             
     if testEN:
@@ -325,37 +328,50 @@ def plot_data(working_dir = None,
 
             """Plotting using draw since it's non-blocking"""
             plt.figure()
-            plt.subplot(2,2,1)
             plt.plot(range(rounds), training_error)
             plt.xlabel('number of rounds')
             plt.ylabel('training error')
             plt.title('Training Error vs. Number of Rounds')
             plt.savefig(filename = basepath + "training_err.tif")
-            if not only_save:
-                plt.draw()                    
 
             """4) Plot test error against number of rounds"""
-            plt.subplot(2,2,2)
+            plt.figure()
             plt.plot(range(rounds), val_error)
             plt.xlabel('number of rounds')
             plt.ylabel('validation error')
             plt.title('Validation Error vs. Number of Rounds')
             plt.savefig(filename = basepath + "validation_err.tif")
-            if not only_save:
-                plt.draw()                    
-
+            
             """5) Plot test error against number of rounds"""
-            plt.subplot(2,2,3)
+            plt.figure()
             plt.plot(range(rounds), test_error)
             plt.xlabel('number of rounds')
             plt.ylabel('testing error')
             plt.title('Testing Error vs. Number of Rounds')             
             plt.savefig(filename = basepath + "testing_err.tif")
             if not only_save:
+                plt.figure()
+                plt.subplot(2,2,1)
+                plt.plot(range(rounds), training_error)
+                plt.xlabel('number of rounds')
+                plt.ylabel('training error')
+                plt.title('Training Error vs. Number of Rounds')
                 plt.draw()                    
 
-            """show is blocking, and is called after all graphs are created"""
-            if not only_save:
+                plt.subplot(2,2,2)
+                plt.plot(range(rounds), val_error)
+                plt.xlabel('number of rounds')
+                plt.ylabel('validation error')
+                plt.title('Validation Error vs. Number of Rounds')
+                plt.draw()                    
+
+                plt.subplot(2,2,3)
+                plt.plot(range(rounds), test_error)
+                plt.xlabel('number of rounds')
+                plt.ylabel('testing error')
+                plt.title('Testing Error vs. Number of Rounds')             
+                plt.draw()                    
+                """show is blocking, and is called after all graphs are created"""
                 plt.show()
         else:
             """1) ROC plot based on testing error"""
@@ -380,26 +396,36 @@ def plot_data(working_dir = None,
                                     != np.sign(test_predictions[:, k])
                                     )/np.float32(test_exam_no)
             
-            plt.subplot(1,2,1)
+            plt.figure()
             plt.plot(range(rounds), training_error)
             plt.xlabel('number of rounds')
             plt.ylabel('training error')
             plt.title('Training Error vs. Number of Rounds')
             plt.savefig(filename = basepath + "training_err.tif")
-            if not only_save:
-                plt.draw()   
 
-            """3) Plot test error against number of rounds"""
-            plt.subplot(1,2,2)
+            """5) Plot test error against number of rounds"""
+            plt.figure()
             plt.plot(range(rounds), test_error)
             plt.xlabel('number of rounds')
             plt.ylabel('testing error')
-            plt.title('Testing Error vs. Number of Rounds')                
+            plt.title('Testing Error vs. Number of Rounds')             
             plt.savefig(filename = basepath + "testing_err.tif")
             if not only_save:
-                plt.draw()   
+                plt.figure()
+                plt.subplot(1,2,1)
+                plt.plot(range(rounds), training_error)
+                plt.xlabel('number of rounds')
+                plt.ylabel('training error')
+                plt.title('Training Error vs. Number of Rounds')
+                plt.draw()                    
 
-            if not only_save:
+                plt.subplot(1,2,2)
+                plt.plot(range(rounds), test_error)
+                plt.xlabel('number of rounds')
+                plt.ylabel('testing error')
+                plt.title('Testing Error vs. Number of Rounds')             
+                plt.draw()                    
+                """show is blocking, and is called after all graphs are created"""
                 plt.show()
     else:
         if xvalEN:
@@ -424,27 +450,37 @@ def plot_data(working_dir = None,
                 val_error[k] = sum((2*train_label-1) 
                                    != np.sign(validation_predictions[:, k])
                                    )/np.float32(train_exam_no) 
+            """Plotting using draw since it's non-blocking"""
             plt.figure()
-            plt.subplot(1,2,1)
             plt.plot(range(rounds), training_error)
             plt.xlabel('number of rounds')
             plt.ylabel('training error')
             plt.title('Training Error vs. Number of Rounds')
             plt.savefig(filename = basepath + "training_err.tif")
-            if not only_save:
-                plt.draw()   
-                
-            """3) Plot combined validation error against number of rounds"""
-            plt.subplot(1,2,2)
+
+            """4) Plot test error against number of rounds"""
+            plt.figure()
             plt.plot(range(rounds), val_error)
             plt.xlabel('number of rounds')
             plt.ylabel('validation error')
-            plt.title('Validation Error vs. Number of Rounds')                
+            plt.title('Validation Error vs. Number of Rounds')
             plt.savefig(filename = basepath + "validation_err.tif")
+            
             if not only_save:
-                plt.draw()   
+                plt.figure()
+                plt.subplot(1,2,1)
+                plt.plot(range(rounds), training_error)
+                plt.xlabel('number of rounds')
+                plt.ylabel('training error')
+                plt.title('Training Error vs. Number of Rounds')
+                plt.draw()                    
 
-            if not only_save:
+                plt.subplot(1,2,2)
+                plt.plot(range(rounds), val_error)
+                plt.xlabel('number of rounds')
+                plt.ylabel('validation error')
+                plt.title('Validation Error vs. Number of Rounds')
+                plt.draw()
                 plt.show()
         else:
             """1) Plot training error against number of rounds"""
@@ -453,11 +489,12 @@ def plot_data(working_dir = None,
                 training_error[k] = sum((2*train_label-1) 
                                         != np.sign(train_predictions[:, k])
                                         )/np.float32(train_exam_no)
+            """Plotting using draw since it's non-blocking"""
+            plt.figure()
             plt.plot(range(rounds), training_error)
             plt.xlabel('number of rounds')
             plt.ylabel('training error')
-            plt.title('Training Error vs. Number of Rounds')                
+            plt.title('Training Error vs. Number of Rounds')
             plt.savefig(filename = basepath + "training_err.tif")
             if not only_save:
-                plt.draw()
                 plt.show()
