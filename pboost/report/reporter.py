@@ -307,7 +307,7 @@ def plot_data(working_dir = None,
                     +"error with zero threshold :")    
             print(roc2.confusion_matrix(0))        
             
-            pyroc.plot_multiple_roc(filename = basepath + "roc.tif",
+            pyroc.plot_multiple_roc(filename = basepath + "roc.png",
                                     rocList = (roc1, roc2), 
                                     title='ROC Curve',
                                     labels = ("validation error curve","testing error curve"),
@@ -375,7 +375,7 @@ def plot_data(working_dir = None,
             plt.xlabel('number of rounds')
             plt.ylabel('training error')
             plt.title('Training Error vs. Number of Rounds')
-            plt.savefig(filename = basepath + "training_err.tif")
+            plt.savefig(filename = basepath + "training_err.png")
 
             """4) Plot test error against number of rounds"""
             plt.clf()
@@ -383,7 +383,7 @@ def plot_data(working_dir = None,
             plt.xlabel('number of rounds')
             plt.ylabel('validation error')
             plt.title('Validation Error vs. Number of Rounds')
-            plt.savefig(filename = basepath + "validation_err.tif")
+            plt.savefig(filename = basepath + "validation_err.png")
             
             """5) Plot test error against number of rounds"""
             plt.clf()
@@ -391,13 +391,13 @@ def plot_data(working_dir = None,
             plt.xlabel('number of rounds')
             plt.ylabel('testing error')
             plt.title('Testing Error vs. Number of Rounds')             
-            plt.savefig(filename = basepath + "testing_err.tif")
+            plt.savefig(filename = basepath + "testing_err.png")
         else:
             """1) ROC plot based on testing error"""
             last_round = test_predictions[:,-1]
             z = zip(test_label, last_round)
             roc = pyroc.ROCData(z)
-            roc.plot(filename = basepath+"roc.tif",
+            roc.plot(filename = basepath+"roc.png",
                      title='Testing Error ROC Curve',
                      only_save = only_save)
             print("Info : Confusion matrix for combined validation "
@@ -448,7 +448,7 @@ def plot_data(working_dir = None,
             plt.xlabel('number of rounds')
             plt.ylabel('training error')
             plt.title('Training Error vs. Number of Rounds')
-            plt.savefig(filename = basepath + "training_err.tif")
+            plt.savefig(filename = basepath + "training_err.png")
 
             """5) Plot test error against number of rounds"""
             plt.clf()
@@ -456,7 +456,7 @@ def plot_data(working_dir = None,
             plt.xlabel('number of rounds')
             plt.ylabel('testing error')
             plt.title('Testing Error vs. Number of Rounds')             
-            plt.savefig(filename = basepath + "testing_err.tif")
+            plt.savefig(filename = basepath + "testing_err.png")
 
     else:
         if xvalEN:
@@ -464,7 +464,7 @@ def plot_data(working_dir = None,
             last_round = validation_predictions[:,-1]
             z = zip(train_label, last_round)
             roc = pyroc.ROCData(z)
-            roc.plot(filename = basepath+"roc.tif",
+            roc.plot(filename = basepath+"roc.png",
                      title='Validation Error ROC Curve',
                      only_save = only_save)
             print("Info : Confusion matrix for combined validation "
@@ -514,7 +514,7 @@ def plot_data(working_dir = None,
             plt.xlabel('number of rounds')
             plt.ylabel('training error')
             plt.title('Training Error vs. Number of Rounds')
-            plt.savefig(filename = basepath + "training_err.tif")
+            plt.savefig(filename = basepath + "training_err.png")
 
             """4) Plot test error against number of rounds"""
             plt.clf()
@@ -522,7 +522,7 @@ def plot_data(working_dir = None,
             plt.xlabel('number of rounds')
             plt.ylabel('validation error')
             plt.title('Validation Error vs. Number of Rounds')
-            plt.savefig(filename = basepath + "validation_err.tif")
+            plt.savefig(filename = basepath + "validation_err.png")
 
         else:
             """1) Plot training error against number of rounds"""
@@ -544,6 +544,6 @@ def plot_data(working_dir = None,
             plt.xlabel('number of rounds')
             plt.ylabel('training error')
             plt.title('Training Error vs. Number of Rounds')
-            plt.savefig(filename = basepath + "training_err.tif")
+            plt.savefig(filename = basepath + "training_err.png")
             if not only_save:
                 plt.show()
