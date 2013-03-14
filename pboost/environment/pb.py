@@ -157,7 +157,10 @@ class PBoost():
             Number of items to partition
         
         """
-        threshold = int(limit/self.comm_size)+1
+        threshold = int(np.ceil(float(limit)/self.comm_size))
+        if threshold < 1:
+            raise Exception("Error : Too many cores for the given dataset size.")
+#        threshold = int(limit/self.comm_size)+1
         partition = np.array([0])  
         while True:
             if threshold * partition.size >= limit:
