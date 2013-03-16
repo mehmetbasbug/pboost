@@ -21,15 +21,25 @@ if __name__ == '__main__':
                            type=str,
                            default='~/pboost/configurations.cfg',
                            help='Path to the configuration file')
-    argparser.add_argument('conf_nums', 
-                           metavar='cn', 
-                           type=int, 
+    argparser.add_argument('conf_intervals',
+                           metavar='ci',
+                           type=str, 
                            nargs='+',
-                           help='Configuration numbers to process')
+                           help='Configuration numbers to process, either a single number or an interval i.e. 2 3 5 or 2-10 17')
     args = argparser.parse_args()
     conf_path = os.path.realpath(os.path.expanduser(args.conf_path))
     comm = MPI.COMM_WORLD
-    for conf_num in args.conf_nums:
+    conf_nums = list()
+    for conf_interval in args.conf_intervals:
+        conf_interval = conf_interval.split('-')
+        if len(conf_interval) == 1:
+            conf_nums.append(int(conf_interval[0]))
+        elif len(conf_interval) == 2:
+            for conf_num in range(int(conf_interval[0]),int(conf_interval[1])+1):
+                conf_nums.append(int(conf_num))
+        else:
+            raise Exception("Inappropriate format for configuration numbers. See help")
+    for conf_num in conf_nums:
         try:
             pb = PBoost(comm = comm, 
                         conf_num = conf_num, 
