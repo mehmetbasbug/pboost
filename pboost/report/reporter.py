@@ -392,6 +392,7 @@ def plot_data(working_dir = None,
             plt.ylabel('testing error')
             plt.title('Testing Error vs. Number of Rounds')             
             plt.savefig(filename = basepath + "testing_err.png")
+            plt.close()
         else:
             """1) ROC plot based on testing error"""
             last_round = test_predictions[:,-1]
@@ -457,7 +458,7 @@ def plot_data(working_dir = None,
             plt.ylabel('testing error')
             plt.title('Testing Error vs. Number of Rounds')             
             plt.savefig(filename = basepath + "testing_err.png")
-
+            plt.close()
     else:
         if xvalEN:
             """1) ROC plot based on combined validation error"""
@@ -523,6 +524,7 @@ def plot_data(working_dir = None,
             plt.ylabel('validation error')
             plt.title('Validation Error vs. Number of Rounds')
             plt.savefig(filename = basepath + "validation_err.png")
+            plt.close()
 
         else:
             """1) Plot training error against number of rounds"""
@@ -547,3 +549,4 @@ def plot_data(working_dir = None,
             plt.savefig(filename = basepath + "training_err.png")
             if not only_save:
                 plt.show()
+            plt.close()
