@@ -1,6 +1,7 @@
 import sys,json,os,h5py,sqlite3
 import numpy as np
 import inspect
+import pybloomfilter
 from pboost.feature.factory import BaseFeatureFactory
 
 class Extractor():
@@ -104,6 +105,8 @@ class Extractor():
         """
 
         all_features = self.read_features()
+        if self.pb.deduplicationEN:
+            bf = pybloomfilter.BloomFilter(len(all_features),0.01,None)              
         
         """Create model file and necessary datasets"""
         model_file = h5py.File(self.pb.model_fp,'w')
@@ -130,7 +133,7 @@ class Extractor():
         current_fp =  None
         io_partition = self.create_io_partition()
         io_ind = 0
-        
+        last_wi = 0
         """Process a single io chunk at a time"""
         for io_ind in np.arange(len(io_partition)-1):
             io_current = io_partition[io_ind]
@@ -144,7 +147,7 @@ class Extractor():
                 test_chunk = np.zeros((io_next-io_current,self.pb.test_exam_no),
                                     dtype = "float32")
             feature_ind = 0
-            for feature_def in feature_chunk:
+            for f_idx,feature_def in enumerate(feature_chunk):
                 fp = feature_def[0]
                 cls = feature_def[1]
                 params = feature_def[2]
@@ -158,21 +161,37 @@ class Extractor():
                         test_feature = Feature(feature_def = feature_def,
                                                data = testdata)
                 train_vals = feature.apply(params = params)
-                train_chunk[feature_ind,:] = train_vals
-                if self.pb.testEN:
-                    test_vals = test_feature.apply(params = params)
-                    test_chunk[feature_ind,:] = test_vals
-                """Store sorting indices"""
                 ind = np.argsort(train_vals)
-                index_chunk[feature_ind,:] = ind
-                feature_ind = feature_ind + 1
+                is_valid = True
+                if self.pb.deduplicationEN:
+                    ind_str = np.ndarray.tostring(ind)
+                    is_valid = not bf.add(ind_str)
+                        
+                if is_valid:
+                    index_chunk[feature_ind,:] = ind
+                    train_chunk[feature_ind,:] = train_vals
+                    if self.pb.testEN:
+                        test_vals = test_feature.apply(params = params)
+                        test_chunk[feature_ind,:] = test_vals
+                    self.pb.feature_mapping[feature_ind] = self.pb.features_ind1 + f_idx + io_current+1
+                    feature_ind = feature_ind + 1
+                
             """Update related data structures as chunks"""
-            io_index[io_current:io_next,:] = index_chunk
-            io_train[io_current:io_next,:] = train_chunk
+            next_wi = last_wi + feature_ind
+            io_index[last_wi:next_wi,:] = index_chunk[0:feature_ind]
+            io_train[last_wi:next_wi,:] = train_chunk[0:feature_ind]
             if self.pb.testEN:
-                io_test[io_current:io_next,:] = test_chunk
-            self.pb.index_matrix[io_current:io_next,:] = index_chunk
+                io_test[last_wi:next_wi,:] = test_chunk[0:feature_ind]
+            self.pb.index_matrix[last_wi:next_wi,:] = index_chunk[0:feature_ind]
+            last_wi = next_wi
         
+        print self.pb.rank,len(all_features),next_wi
+        
+        if self.pb.deduplicationEN:
+            bf.clear_all()
+            self.pb.index_matrix = self.pb.index_matrix[0:next_wi,:]
+            self.pb.adjust_partition(span = next_wi)
+
         model_file.close()
         train_file.close()
         if self.pb.testEN:

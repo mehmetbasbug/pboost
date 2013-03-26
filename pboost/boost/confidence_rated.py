@@ -43,7 +43,7 @@ class ConfidenceRatedBoosting(Boosting):
         self.tl = np.int16(np.copy(self.process.label))
         self.tl[self.process.label == 0] = -1
         
-    def run(self, dt, r, rnk, d1, d2, d3, d4, c0, c1, bout):
+    def run(self, dt, r, rnk, d1, d2, d3, d4, d5, c0, c1, bout):
         """
         
         Run a single round of boosting
@@ -72,6 +72,10 @@ class ConfidenceRatedBoosting(Boosting):
             
         d4 : integer
             The actual index of the next example in threshold calculation
+        
+        d5 : integer
+            Database index of the best hypothesis
+        
         c0 : float
             Prediction for values lower than threshold
         
@@ -94,6 +98,7 @@ class ConfidenceRatedBoosting(Boosting):
              'd2':d2,
              'd3':d3,
              'd4':d4,
+             'd5':d5,
              'v':v,
              'c0':c0,
              'c1':c1}
@@ -281,6 +286,6 @@ class ConfidenceRatedWL(WeakLearner):
         c1 = 0.5 * np.log((w11_bh + eps) / (w10_bh + eps))
         self.__bout[:] = False
         self.__bout[self.__index[d1,0:d2+1]] = True
-        
-        val = np.array([err_best,self.pb.rank, d1, d2, d3, d4, c0, c1])
+        d5 = self.pb.feature_mapping[d1]
+        val = np.array([err_best,self.pb.rank, d1, d2, d3, d4, d5, c0, c1])
         return val,self.__bout

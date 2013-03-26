@@ -84,6 +84,7 @@ class PBoost():
         self.factory_files = self.conf_dict['factory_files']
         self.max_memory = self.conf_dict['max_memory']
         self.show_plots = self.conf_dict['show_plots']
+        self.deduplicationEN = self.conf_dict['deduplication']=='y'
         
         self.isLeader = False
         self.logEN = logEN
@@ -104,6 +105,7 @@ class PBoost():
         self.features_ind1 = None
         self.features_ind2 = None
         self.features_span = None
+        self.feature_mapping = None
                 
         self.index_matrix = None
         self.xval_indices = None
@@ -133,6 +135,7 @@ class PBoost():
         self.features_ind1 = self.partition[self.rank]
         self.features_ind2 = self.partition[self.rank+1]
         self.features_span = self.features_ind2 - self.features_ind1
+        self.feature_mapping = np.zeros(self.features_span)
         
         """Choose the shortest length datatype possible"""
         if self.total_exam_no < 255:
@@ -143,7 +146,25 @@ class PBoost():
             dtype = np.dtype('u4')
         self.index_matrix = np.zeros((self.features_span,self.total_exam_no),
                                      dtype = dtype)
-    
+        
+    def adjust_partition(self,
+                         span):
+        if self.isLeader:
+            self.partition[1] = span
+            for slv in np.arange(1,self.comm_size):
+                slv_span = self.comm.recv(source=slv,tag=101) 
+                self.partition[slv+1] = self.partition[slv] + slv_span
+        else:
+            self.comm.send(span,dest = 0,tag=101)
+        
+        self.partition = self.comm.bcast(self.partition,root = 0)
+        
+        self.total_feature_no = self.partition[-1]
+        self.features_ind1 = self.partition[self.rank]
+        self.features_ind2 = self.partition[self.rank+1]
+        self.features_span = self.features_ind2 - self.features_ind1
+        self.feature_mapping = self.feature_mapping[0:self.features_span]
+        
     def create_partition(self,limit):
         """
         

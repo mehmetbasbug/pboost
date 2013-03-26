@@ -57,7 +57,7 @@ class Process():
             dt = np.ones(self.pb.total_exam_no,
                          dtype="float32") / self.pb.total_exam_no
 
-        val = np.zeros(7,dtype="float32")-1
+        val = np.zeros(8,dtype="float32")-1
         boosting = None
         wl = None
         if self.pb.algorithm == 'conf-rated':
@@ -74,7 +74,7 @@ class Process():
             new = self.pb.comm.allreduce(val[0],None, MPI.MINLOC)
             val = self.pb.comm.bcast(val, root=new[1])
             bout = self.pb.comm.bcast(bout, root=new[1])
-            (rnk, d1, d2, d3, d4, c0, c1) = val[1:8]
+            (rnk, d1, d2, d3, d4, d5, c0, c1) = val[1:9]
             rnk = int(rnk)
             dt = boosting.run(dt = dt,
                               r = r,
@@ -83,6 +83,7 @@ class Process():
                               d2 = d2,
                               d3 = d3,
                               d4 = d4,
+                              d5 = d5,
                               c0 = c0,
                               c1 = c1,
                               bout = bout)

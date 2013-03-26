@@ -24,7 +24,8 @@ def get_configuration(conf_num, conf_path = "./configurations.cfg"):
               " number. Please choose another number.")
     required_options = ('train_file','test_file','factory_files',
                         'algorithm','rounds','xval_no',
-                        'working_dir','max_memory','show_plots'
+                        'working_dir','max_memory','show_plots',
+                        'deduplication',
                         )
     my_dict = dict()
     arbitrary = dict()
@@ -73,6 +74,9 @@ def get_configuration(conf_num, conf_path = "./configurations.cfg"):
 
     if my_dict['show_plots'] == None:
         my_dict['show_plots'] = 'y'
+
+    if my_dict['deduplication'] == None:
+        my_dict['deduplication'] = 'n'
 
 
     # Convert strings to ints for numerical fields

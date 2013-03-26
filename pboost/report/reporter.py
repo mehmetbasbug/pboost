@@ -80,7 +80,7 @@ class Reporter():
             os.makedirs(self.out_fp)
     
     def _get_feature_def(self,cursor,rowid):
-        s = 'SELECT * FROM features WHERE rowid='+str(rowid+1)
+        s = 'SELECT * FROM features WHERE rowid='+str(rowid)
         cursor.execute(s)
         return list(cursor.fetchone())
     
@@ -189,7 +189,7 @@ class Reporter():
         for h_ind in np.arange(len(self.hypotheses)):
             h = self.hypotheses[h_ind]
             offset = self.pb.partition[h['rnk']]
-            fn_def = self._get_feature_def(cursor,offset + h['d1'])
+            fn_def = self._get_feature_def(cursor,h['d5'])
             head,tail = os.path.split(fn_def[0])
             root,ext =  os.path.splitext(tail)
             fn_def[0] = './'+root+'.py'
