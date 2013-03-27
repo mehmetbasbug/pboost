@@ -84,7 +84,8 @@ class PBoost():
         self.factory_files = self.conf_dict['factory_files']
         self.max_memory = self.conf_dict['max_memory']
         self.show_plots = self.conf_dict['show_plots']
-        self.deduplicationEN = self.conf_dict['deduplication']=='y'
+        self.deduplicationEN = self.conf_dict['deduplication']!='n'
+        self.deduplication = self.conf_dict['deduplication']
         
         self.isLeader = False
         self.logEN = logEN

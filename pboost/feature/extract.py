@@ -106,8 +106,15 @@ class Extractor():
 
         all_features = self.read_features()
         if self.pb.deduplicationEN:
-            bf = pybloomfilter.BloomFilter(len(all_features),0.01,None)              
-        
+            if self.pb.deduplication == 'bloomfilter':
+                el = BloomFilter(capacity = len(all_features),
+                                 error_rate = 0.01)
+            elif self.pb.deduplication == 'eliminator':
+                el = Eliminator(threshold = self.pb.total_exam_no/10,
+                                validated_set = self.pb.index_matrix)
+            else:
+                raise Exception("Error : Unknown feature deduplication method.")
+                
         """Create model file and necessary datasets"""
         model_file = h5py.File(self.pb.model_fp,'w')
         io_index = model_file.create_dataset("index",
@@ -164,11 +171,11 @@ class Extractor():
                 ind = np.argsort(train_vals)
                 is_valid = True
                 if self.pb.deduplicationEN:
-                    ind_str = np.ndarray.tostring(ind)
-                    is_valid = not bf.add(ind_str)
+                    is_valid = el.validate(new = ind)
                         
                 if is_valid:
                     index_chunk[feature_ind,:] = ind
+                    self.pb.index_matrix[last_wi+feature_ind,:] = ind
                     train_chunk[feature_ind,:] = train_vals
                     if self.pb.testEN:
                         test_vals = test_feature.apply(params = params)
@@ -182,13 +189,11 @@ class Extractor():
             io_train[last_wi:next_wi,:] = train_chunk[0:feature_ind]
             if self.pb.testEN:
                 io_test[last_wi:next_wi,:] = test_chunk[0:feature_ind]
-            self.pb.index_matrix[last_wi:next_wi,:] = index_chunk[0:feature_ind]
+#             self.pb.index_matrix[last_wi:next_wi,:] = index_chunk[0:feature_ind]
             last_wi = next_wi
-        
-        print self.pb.rank,len(all_features),next_wi
-        
+               
         if self.pb.deduplicationEN:
-            bf.clear_all()
+            el.finalize()
             self.pb.index_matrix = self.pb.index_matrix[0:next_wi,:]
             self.pb.adjust_partition(span = next_wi)
 
@@ -196,6 +201,74 @@ class Extractor():
         train_file.close()
         if self.pb.testEN:
             test_file.close()
+
+class Eliminator():
+    def __init__(self,
+                 threshold,
+                 validated_set
+                 ):
+        self.threshold = threshold
+        self.validated_set = validated_set
+        self.counter = 0
+
+    def merge_and_count(self,a, b):
+        c = []
+        count = 0
+        i, j = 0, 0
+        while i < len(a) and j < len(b):
+            c.append(min(b[j], a[i]))
+            if b[j] < a[i]:
+                count += len(a) - i
+                j+=1
+            else:
+                i+=1
+        c += a[i:] + b[j:]
+        return count, c
+
+    def sort_and_count(self,L):
+        if len(L) == 1: return 0, L
+        n = len(L) // 2 
+        a, b = L[:n], L[n:]
+        ra, a = self.sort_and_count(a)
+        rb, b = self.sort_and_count(b)
+        r, L = self.merge_and_count(a, b)
+        return ra+rb+r, L
+
+    def get_permutation(self,L1, L2):
+        permutation = map(dict((v, i) for i, v in enumerate(L1)).get, L2)
+        return permutation
+    
+    def validate(self,new):
+        if self.counter == 0:
+            self.counter = 1
+            return True
+        else:
+            for k in np.arange(self.counter):
+                x = self.validated_set[k,:]
+                perm = self.get_permutation(x,new)
+                inv = self.sort_and_count(perm)[0]
+                if inv < self.threshold:
+                    return False
+            self.counter = self.counter + 1
+            return True
+    
+    def finalize(self):
+        return True
+
+class BloomFilter():
+    def __init__(self,
+                 capacity,
+                 error_rate
+                 ):
+        self.bf = pybloomfilter.BloomFilter(capacity,error_rate,None)
+   
+    def validate(self,new):
+        ind_str = np.ndarray.tostring(new)
+        return not self.bf.add(ind_str)
+    
+    def finalize(self):
+        self.bf.clear_all()
+        return True
         
 class Feature():
     def __init__(self,
