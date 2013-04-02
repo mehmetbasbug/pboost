@@ -217,12 +217,11 @@ class AdaBoostWL(WeakLearner):
 
         """Allocate memory for intermediate data matrices"""
         self.__index = self.pb.index_matrix
-        self.__w00 = np.zeros(shape = self.__index.shape,dtype ="float32")
-        self.__w01 = np.zeros(shape = self.__index.shape,dtype ="float32")
         self.__err = np.zeros(shape = self.__index.shape,dtype ="float32")
         self.__bout = np.zeros(self.__index.shape[1],dtype="bool")
-        self.__cdt = np.zeros(shape = self.process.label.shape,dtype ="float32")
-        self.__cdnt = np.zeros(shape = self.process.label.shape,dtype ="float32")
+        self.__dt = np.zeros(shape = self.process.label.shape,dtype ="float32")
+        self.__not_label = np.logical_not(self.process.label)
+        self.__label = np.logical_not(self.__not_label)
     
     def run(self, dt):
         """
@@ -245,31 +244,27 @@ class AdaBoostWL(WeakLearner):
             c0 : Prediction for values lower than threshold
             c1 : Prediction for values larger than threshold
         """
+        self.__dt = np.copy(dt)
+        w01_max = np.sum(dt[self.__label])
+        w00_max = np.sum(dt[self.__not_label])
+        self.__dt[self.__label] = -self.__dt[self.__label]
+        self.__err = np.take(dt, self.__index)
+        np.cumsum(self.__err, axis=1, dtype ="float32", out=self.__err)
         
-        self.__cdnt = np.float32(dt * np.logical_not(self.process.label.T))
-        self.__cdt = np.float32(dt * self.process.label.T)
-        """Calculate the weighted error matrix for label=0 pred=0"""
-        self.__w00 = np.take(self.__cdnt, self.__index)
-        np.cumsum(self.__w00, axis=1, dtype ="float32", out=self.__w00)
-        """Calculate the weighted error matrix for label=1 pred=0"""
-        self.__w01 = np.take(self.__cdt, self.__index)
-        np.cumsum(self.__w01, axis=1, dtype ="float32", out=self.__w01)
-        w00_max = np.amax(self.__w00[:, -1])
-        w01_max = np.amax(self.__w01[:, -1])
-        """Calculate the weighted error matrix"""
-        self.__err = evaluate("w00 - w01",local_dict = {'w00': self.__w00, 
-                                                        'w01': self.__w01,})
-        """Find the hypothesis with the least error """
-        e1 = w01_max + np.amin(self.__err)
-        e2 = w00_max - np.amax(self.__err)
+        e1_ind = np.argmin(self.__err)
+        (e1_d1, e1_d2) = np.unravel_index(e1_ind, self.__err.shape)
+        e1 = w01_max + self.__err[e1_d1,e1_d2]
+        e2_ind = np.argmax(self.__err)
+        (e2_d1, e2_d2) = np.unravel_index(e2_ind, self.__err.shape)
+        e2 = w00_max - self.__err[e2_d1,e2_d2]
         if e1 < e2:
-            err_ind = np.argmin(self.__err)
+            d1 = e1_d1
+            d2 = e1_d2
             err_best = e1
         else:
-            err_ind = np.argmax(self.__err)
+            d1 = e2_d1
+            d2 = e2_d2
             err_best = e2
-        
-        (d1, d2) = np.unravel_index(err_ind, self.__err.shape)
 
         if d2 < self.process.train_exam_no - 1: 
             d3 = self.__index[d1, d2] 
@@ -280,8 +275,8 @@ class AdaBoostWL(WeakLearner):
         
         """Calculate labels c0 and c1"""
         eps = np.float32(1e-3 / self.process.train_exam_no);
-        w00_bh = self.__w00[d1, d2]
-        w01_bh = self.__w01[d1, d2]
+        w01_bh = np.cumsum(np.take(dt*self.__label,self.__index[d1,:]))[d2]
+        w00_bh = self.__err[d1,d2] + w01_bh
         w10_bh = w00_max - w00_bh
         w11_bh = w01_max - w01_bh
         if err_best < eps:
