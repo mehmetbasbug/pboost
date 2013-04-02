@@ -44,7 +44,7 @@ class AdaBoost(Boosting):
         self.tl[self.process.label == 0] = -1
         
 
-    def run(self, dt, r, rnk, d1, d2, d3, d4, c0, c1, bout):
+    def run(self, dt, r, rnk, d1, d2, d3, d4, d5, c0, c1, bout):
         """
         
         Run a single round of boosting
@@ -95,6 +95,7 @@ class AdaBoost(Boosting):
              'd2':d2,
              'd3':d3,
              'd4':d4,
+             'd5':d5,
              'v':v,
              'c0':c0,
              'c1':c1}
@@ -294,6 +295,7 @@ class AdaBoostWL(WeakLearner):
         """Calculate marker"""
         self.__bout[:] = False
         self.__bout[self.__index[d1,0:d2+1]] = True
+        d5 = self.pb.feature_mapping[d1]
         
-        val = np.array([err_best,self.pb.rank, d1, d2, d3, d4, c0, c1])
+        val = np.array([err_best,self.pb.rank, d1, d2, d3, d4, d5, c0, c1])
         return val,self.__bout
