@@ -246,10 +246,10 @@ class AdaBoostWL(WeakLearner):
             c1 : Prediction for values larger than threshold
         """
         self.__dt = np.copy(dt)
-        w01_max = np.sum(dt[self.__label])
-        w00_max = np.sum(dt[self.__not_label])
+        w01_max = np.sum(self.__dt*self.__label)
+        w00_max = np.sum(self.__dt*self.__not_label)
         self.__dt[self.__label] = -self.__dt[self.__label]
-        self.__err = np.take(dt, self.__index)
+        self.__err = np.take(self.__dt, self.__index)
         np.cumsum(self.__err, axis=1, dtype ="float32", out=self.__err)
         
         e1_ind = np.argmin(self.__err)
