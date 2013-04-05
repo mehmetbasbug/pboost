@@ -112,7 +112,8 @@ class PBoost():
         self.xval_indices = None
         
         """For consistency sync xval indices"""
-        self.sync_xval_indices()
+        self.sync_xval_indices(fp = self.train_fp, 
+                               ds_name = 'indices')
         
         """Append working directory to python path"""
         sys.path.append(self.wd) 
@@ -209,7 +210,7 @@ class PBoost():
             f = h5py.File(fp,'r')
             try:
                 indices = f[ds_name][:]
-                if np.amax(indices) != (self.xval_no + 1):
+                if np.amax(indices) != self.xval_no:
                     s = "Warning : Given xval indices are not compatible with "
                     s = s + "xval no. Randomly creating indices."
                     print s
@@ -224,6 +225,7 @@ class PBoost():
                                     self.total_exam_no / self.xval_no)
                 np.random.shuffle(indices)
                 pass
+            f.close()
         indices = self.comm.bcast(indices,root = 0)
         self.xval_indices = indices
     

@@ -22,7 +22,8 @@ class Extractor():
         if pb.isLeader:
             total_feature_no = self.produce_features()
         pb.sync_partition(total_feature_no = total_feature_no)
-        pb.sync_xval_indices()
+        pb.sync_xval_indices(fp = pb.train_fp, 
+                             ds_name = 'indices')
     
     def produce_features(self):
         """
