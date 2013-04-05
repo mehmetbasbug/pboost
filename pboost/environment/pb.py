@@ -194,7 +194,7 @@ class PBoost():
                                       threshold*partition.size)
         return partition
     
-    def sync_xval_indices(self):
+    def sync_xval_indices(self,fp,ds_name='indices'):
         """
         
         For leader, creates an array of random integers sampled 
@@ -206,9 +206,24 @@ class PBoost():
         """
         indices = None
         if self.isLeader:
-            indices = np.repeat(np.arange(1, (self.xval_no + 1)), 
-                                self.total_exam_no / self.xval_no)
-            np.random.shuffle(indices)
+            f = h5py.File(fp,'r')
+            try:
+                indices = f[ds_name][:]
+                if np.amax(indices) != (self.xval_no + 1):
+                    s = "Warning : Given xval indices are not compatible with "
+                    s = s + "xval no. Randomly creating indices."
+                    print s
+                    indices = np.repeat(np.arange(1, (self.xval_no + 1)), 
+                                        self.total_exam_no / self.xval_no)
+                    np.random.shuffle(indices)
+            except KeyError:
+                s = "Warning : Xval indices are not found in the datafile."
+                s = s + "Randomly creating indices."
+                print s
+                indices = np.repeat(np.arange(1, (self.xval_no + 1)), 
+                                    self.total_exam_no / self.xval_no)
+                np.random.shuffle(indices)
+                pass
         indices = self.comm.bcast(indices,root = 0)
         self.xval_indices = indices
     
