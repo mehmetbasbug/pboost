@@ -3,6 +3,7 @@ import numpy as np
 import inspect
 import pybloomfilter
 from pboost.feature.factory import BaseFeatureFactory
+from bitarray import bitarray
 
 class Extractor():
     def __init__(self, pb):
@@ -107,12 +108,15 @@ class Extractor():
 
         all_features = self.read_features()
         if self.pb.deduplicationEN:
-            if self.pb.deduplication == 'bloomfilter':
+            if self.pb.deduplication == 'BloomFilter':
                 el = BloomFilter(capacity = len(all_features),
                                  error_rate = 0.01)
-            elif self.pb.deduplication == 'eliminator':
-                el = Eliminator(threshold = self.pb.total_exam_no/10,
+            elif self.pb.deduplication == 'InversionCounter':
+                el = InversionCounter(threshold = self.pb.total_exam_no/10,
                                 validated_set = self.pb.index_matrix)
+            elif self.pb.deduplication == 'MapFilter':
+                el = MapFilter(arraylength = self.pb.total_exam_no,
+                               threshold = 0.1)
             else:
                 raise Exception("Error : Unknown feature deduplication method.")
                 
@@ -203,7 +207,7 @@ class Extractor():
         if self.pb.testEN:
             test_file.close()
 
-class Eliminator():
+class InversionCounter():
     def __init__(self,
                  threshold,
                  validated_set
@@ -255,6 +259,35 @@ class Eliminator():
     
     def finalize(self):
         return True
+    
+class MapFilter():
+    def __init__(self,
+                 arraylength,
+                 threshold):
+        self.d = set()
+        self.ba = bitarray(arraylength)
+        self.threshold = arraylength*threshold
+        
+    def validate(self,new):
+        is_valid = False
+        self.ba.setall(0)
+        count = 0
+        toadd = set()
+        for j in new:
+            self.ba[j] = 1
+            s = self.ba.tobytes()
+            if s in self.d:
+                count = count + 1
+            else:
+                toadd.add(s)
+        if count < self.threshold:
+            self.d.update(toadd)
+            is_valid = True    
+        return is_valid
+    
+    def finalize(self):
+        return True
+    
 
 class BloomFilter():
     def __init__(self,
