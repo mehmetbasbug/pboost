@@ -1,4 +1,4 @@
-import h5py,sys,os,glob
+import h5py,sys,os,glob,time
 import numpy as np
 from datetime import datetime
 from pboost.utility import parser
@@ -311,7 +311,7 @@ class PBoost():
         Runs the pboost job
         
         """
-        
+        tstart = time.time()
         if self.logEN:
             msg = "Info : Pboost is running for configuration number : "
             msg = msg + str(self.conf_num)
@@ -385,4 +385,8 @@ class PBoost():
             reporter.run()
             if self.logEN:
                 msg = "Info : Reporter finished running."
+                print datetime.now(),"Rank",self.rank,msg
+                tfinish = time.time()
+                delta = tfinish - tstart
+                msg = "Info : Total runtime : %0.2f seconds" % (delta,)
                 print datetime.now(),"Rank",self.rank,msg
