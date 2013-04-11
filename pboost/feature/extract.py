@@ -116,7 +116,7 @@ class Extractor():
                                 validated_set = self.pb.index_matrix)
             elif self.pb.deduplication == 'MapFilter':
                 el = MapFilter(arraylength = self.pb.total_exam_no,
-                               threshold = 0.1)
+                               threshold = 0.9)
             else:
                 raise Exception("Error : Unknown feature deduplication method.")
                 

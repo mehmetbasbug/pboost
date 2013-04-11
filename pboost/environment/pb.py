@@ -161,6 +161,14 @@ class PBoost():
         
         self.partition = self.comm.bcast(self.partition,root = 0)
         
+        if self.logEN and self.deduplicationEN:
+                dff = self.total_feature_no - self.partition[-1]
+                tff = self.total_feature_no
+                perc = float(dff) / tff
+                msg = "Info : %0.2f percent of features" % (perc,)
+                msg = msg + " (%i out of %i) are eliminated." % (dff,tff)
+                print datetime.now(),"Rank",self.rank,msg
+            
         self.total_feature_no = self.partition[-1]
         self.features_ind1 = self.partition[self.rank]
         self.features_ind2 = self.partition[self.rank+1]
