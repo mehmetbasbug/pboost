@@ -2,6 +2,7 @@ import numpy as np
 from mpi4py import MPI
 from pboost.boost.confidence_rated import ConfidenceRatedBoosting,ConfidenceRatedWL
 from pboost.boost.adaboost import AdaBoost, AdaBoostWL
+from pboost.boost.adaboost_fast import AdaBoostFast, AdaBoostFastWL
 
 class Process():
     def __init__(self, pb, xval_ind, classifyEN=True):
@@ -66,6 +67,9 @@ class Process():
         elif self.pb.algorithm == 'adaboost':
             boosting = AdaBoost(self)
             wl = AdaBoostWL(self)
+        elif self.pb.algorithm == 'adaboost-fast':
+            boosting = AdaBoostFast(self)
+            wl = AdaBoostFastWL(self)
         else:
             raise Exception("Unknown Boosting Algorithm")
         

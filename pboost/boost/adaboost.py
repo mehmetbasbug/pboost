@@ -1,7 +1,7 @@
 import h5py
 import numpy as np
-from numexpr import evaluate
 from pboost.boost.generic import Boosting, WeakLearner
+from scipy import weave
 
 class AdaBoost(Boosting):
     def __init__(self, boosting_p):
@@ -226,15 +226,15 @@ class AdaBoostWL(WeakLearner):
     
     def run(self, dt):
         """
-        
+         
         Run a single round of weak learner
-        
+         
         Parameters
         ----------
-        
+         
         dt : numpy float array
             Probability distribution over examples
-        
+         
         Returns:
             A list of WL related information
             err_best : The weighted error of the best hypothesis
@@ -251,7 +251,7 @@ class AdaBoostWL(WeakLearner):
         self.__dt[self.__label] = -self.__dt[self.__label]
         self.__err = np.take(self.__dt, self.__index)
         np.cumsum(self.__err, axis=1, dtype ="float32", out=self.__err)
-        
+         
         e1_ind = np.argmin(self.__err)
         (e1_d1, e1_d2) = np.unravel_index(e1_ind, self.__err.shape)
         e1 = w01_max + self.__err[e1_d1,e1_d2]
@@ -266,14 +266,14 @@ class AdaBoostWL(WeakLearner):
             d1 = e2_d1
             d2 = e2_d2
             err_best = e2
-
+ 
         if d2 < self.process.train_exam_no - 1: 
             d3 = self.__index[d1, d2] 
             d4 = self.__index[d1, d2] 
         else:
             d3 = self.__index[d1, d2] 
             d4 = d3;
-        
+         
         """Calculate labels c0 and c1"""
         eps = np.float32(1e-3 / self.process.train_exam_no);
         w01_bh = np.cumsum(np.take(dt*self.__label,self.__index[d1,:]))[d2]
@@ -291,11 +291,134 @@ class AdaBoostWL(WeakLearner):
             c1 = alpha
         else:
             c1 = -alpha
-            
+         
         """Calculate marker"""
         self.__bout[:] = False
         self.__bout[self.__index[d1,0:d2+1]] = True
         d5 = self.pb.feature_mapping[d1]
-        
+         
         val = np.array([err_best,self.pb.rank, d1, d2, d3, d4, d5, c0, c1])
         return val,self.__bout
+    
+#     def run2(self,dt):
+#         dt = np.copy(dt)
+#         label = self.__label
+#         index = self.__index
+#         F = index.shape[0]
+#         N = index.shape[1]
+#         code = """
+#                double e = 0.0;
+#                double e1 = 0.0;
+#                double e2 = 0.0;
+#                double err_best = -1.0;
+#                double max_e = -1000.0;
+#                double min_e = 1000.0;
+#                int max_d1 = -1;
+#                int max_d2 = -1;
+#                int min_d1 = -1;
+#                int min_d2 = -1;
+#                int d1 = -1;
+#                int d2 = -1;
+#                int d3 = -1;
+#                int d4 = -1;
+#                double w01_max = 0.0;
+#                double w00_max = 0.0;
+#                double w01_bh = 0.0;
+#                double w00_bh = 0.0;
+#                double w10_bh = 0.0;
+#                double w11_bh = 0.0;
+#                double dtp[N];
+#                for (int j=0; j<N; j++ ){
+#                    if (label(j) == 1){
+#                        w01_max = w01_max + dt(j);
+#                        dtp[j] = -dt(j); 
+#                    }
+#                    else{
+#                        dtp[j] = dt(j); 
+#                        w00_max = w00_max + dt(j);
+#                    }
+#                }
+#                
+#                for (int k=0; k<F; k++ ){
+#                    e = 0.0;
+#                    for (int j=0; j<N; j++ ){
+#                        e = e + dtp[index(k,j)];
+#                        if (e > max_e){
+#                            max_e = e;
+#                            max_d1 = k;
+#                            max_d2 = j;
+#                        }
+#                        if (e < min_e){
+#                            min_e = e;
+#                            min_d1 = k;
+#                            min_d2 = j;
+#                        }
+#                    }
+#                }
+#                e1 = w01_max + min_e;
+#                e2 = w00_max - max_e; 
+#                if (e1 < e2){
+#                    d1 = min_d1;
+#                    d2 = min_d2;
+#                    err_best = e1;
+#                }
+#                else{
+#                    d1 = max_d1;
+#                    d2 = max_d2;
+#                    err_best = e2;
+#                }
+#                d3 = index(d1,d2);
+#                d4 = d3;
+#                     
+#                for (int j=0; j < d2; j++ ){
+#                    if (label(j) == 1){
+#                        w01_bh = w01_bh + dt(j); 
+#                    }
+#                    else{
+#                        w00_bh = w00_bh + dt(j); 
+#                    }
+#                }
+#                w10_bh = w00_max - w00_bh;
+#                w11_bh = w01_max - w01_bh;
+#                
+#                py::tuple results(11);
+#                results[0] = err_best;
+#                results[1] = d1;
+#                results[2] = d2;
+#                results[3] = d3;
+#                results[4] = d4;
+#                results[5] = w00_bh;
+#                results[6] = w01_bh;
+#                results[7] = w10_bh;
+#                results[8] = w11_bh;
+#                results[9] = e1;
+#                results[10] = e2;
+#     
+#                return_val = results;
+#                """
+#         
+#         rtrn = weave.inline(code,
+#                             ['dt','label','index', 'N', 'F'],
+#                             type_converters = weave.converters.blitz,
+#                             compiler = 'gcc')
+#         (err_best,d1,d2,d3,d4,w00_bh,w01_bh,w10_bh,w11_bh,e1,e2) = rtrn
+#         
+#         eps = np.float32(1e-3 / N);
+#         if err_best < eps:
+#             err_best = eps
+#         alpha = 0.5 * np.log((1.0-err_best)/err_best)
+#         if w00_bh < w01_bh:
+#             c0 = alpha
+#         else:
+#             c0 = -alpha
+#         if w10_bh < w11_bh:
+#             c1 = alpha
+#         else:
+#             c1 = -alpha
+# 
+#         self.__bout[:] = False
+#         self.__bout[self.__index[d1,0:d2+1]] = True
+#         d5 = self.pb.feature_mapping[d1]
+#         val = np.array([err_best,self.pb.rank, d1, d2, d3, d4, d5, c0, c1])
+#         return val,self.__bout
+
