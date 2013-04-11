@@ -267,14 +267,19 @@ class MapFilter():
         self.d = set()
         self.ba = bitarray(arraylength)
         self.threshold = arraylength*threshold
+        self.pivot = arraylength/2
         
     def validate(self,new):
         is_valid = False
         self.ba.setall(0)
+        inverted = 1
         count = 0
         toadd = set()
         for j in new:
-            self.ba[j] = 1
+            self.ba[j] = inverted
+            if self.ba[self.pivot]:
+                self.ba.invert()
+                inverted = 0
             s = self.ba.tobytes()
             if s in self.d:
                 count = count + 1
