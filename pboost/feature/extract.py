@@ -185,7 +185,7 @@ class Extractor():
                     if self.pb.testEN:
                         test_vals = test_feature.apply(params = params)
                         test_chunk[feature_ind,:] = test_vals
-                    self.pb.feature_mapping[feature_ind] = self.pb.features_ind1 + f_idx + io_current+1
+                    self.pb.feature_mapping[last_wi+feature_ind] = self.pb.features_ind1 + f_idx + io_current+1
                     feature_ind = feature_ind + 1
                 
             """Update related data structures as chunks"""
