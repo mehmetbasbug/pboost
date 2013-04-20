@@ -38,41 +38,45 @@ setup(name='pboost',
                    'Topic :: Scientific/Engineering :: Artificial Intelligence',
                    ],
       )
-existing_path = os.path.abspath(__import__('pboost').__file__)
-existing_path,tail = os.path.split(existing_path)
-if os.name == "posix":
-    pb_fp = os.path.join(os.path.expanduser('~'),'pboost')
-    if not os.path.exists(pb_fp):
-        os.mkdir(pb_fp)
-    
-    dest = os.path.join(pb_fp, "run.py")
-    src = os.path.join(existing_path, "run.py")
-    shutil.copyfile(src,dest)
-    
-    dest = os.path.join(pb_fp, "plot.py")
-    src = os.path.join(existing_path, "plot.py")
-    shutil.copyfile(src,dest)
-    
-    dest = os.path.join(pb_fp, "configurations.cfg")
-    src = os.path.join(existing_path, "demo/configurations.cfg")
-    shutil.copyfile(src,dest)
-    
-    dest = os.path.join(pb_fp, "demo")
-    if not os.path.exists(dest):
-        src = os.path.join(existing_path, "demo")
-        shutil.copytree(src,dest)
 
-    """If installing with sudo command change the permissions for pboost folder"""
-    try:
-        eff_username = os.getenv(key='SUDO_USER')
-        if eff_username is not None:
-            uid = getpwnam(eff_username).pw_uid
-            gid = getpwnam(eff_username).pw_gid
-            for root, dirs, files in os.walk(pb_fp):  
-                os.chown(root, uid, gid)
-                for momo in dirs:  
-                    os.chown(os.path.join(root, momo), uid, gid)
-                for momo in files:
-                    os.chown(os.path.join(root, momo), uid, gid)
-    except:
-        pass 
+try:
+    existing_path = os.path.abspath(__import__('pboost').__file__)
+    existing_path,tail = os.path.split(existing_path)
+    if os.name == "posix":
+        pb_fp = os.path.join(os.path.expanduser('~'),'pboost')
+        if not os.path.exists(pb_fp):
+            os.mkdir(pb_fp)
+        
+        dest = os.path.join(pb_fp, "run.py")
+        src = os.path.join(existing_path, "run.py")
+        shutil.copyfile(src,dest)
+        
+        dest = os.path.join(pb_fp, "plot.py")
+        src = os.path.join(existing_path, "plot.py")
+        shutil.copyfile(src,dest)
+        
+        dest = os.path.join(pb_fp, "configurations.cfg")
+        src = os.path.join(existing_path, "demo/configurations.cfg")
+        shutil.copyfile(src,dest)
+        
+        dest = os.path.join(pb_fp, "demo")
+        if not os.path.exists(dest):
+            src = os.path.join(existing_path, "demo")
+            shutil.copytree(src,dest)
+    
+        """If installing with sudo command change the permissions for pboost folder"""
+        try:
+            eff_username = os.getenv(key='SUDO_USER')
+            if eff_username is not None:
+                uid = getpwnam(eff_username).pw_uid
+                gid = getpwnam(eff_username).pw_gid
+                for root, dirs, files in os.walk(pb_fp):  
+                    os.chown(root, uid, gid)
+                    for momo in dirs:  
+                        os.chown(os.path.join(root, momo), uid, gid)
+                    for momo in files:
+                        os.chown(os.path.join(root, momo), uid, gid)
+        except:
+            pass 
+except:
+    pass
