@@ -1,4 +1,5 @@
 import numpy as np
+from bitarray import bitarray
 from mpi4py import MPI
 from pboost.boost.confidence_rated import ConfidenceRatedBoosting,ConfidenceRatedWL
 from pboost.boost.adaboost import AdaBoost, AdaBoostWL
@@ -77,7 +78,12 @@ class Process():
             val,bout = wl.run(dt)
             new = self.pb.comm.allreduce(val[0],None, MPI.MINLOC)
             val = self.pb.comm.bcast(val, root=new[1])
-            bout = self.pb.comm.bcast(bout, root=new[1])
+            bout_ba = bitarray(list(bout))
+            bout_c = bout_ba.tobytes()
+            bout_c = self.pb.comm.bcast(bout_c, root=new[1])
+            bout_ba = bitarray()
+            bout_ba.frombytes(bytes(bout_c))
+            bout = np.array(bout_ba.tolist()[0:self.pb.total_exam_no])
             (rnk, d1, d2, d3, d4, d5, c0, c1) = val[1:9]
             rnk = int(rnk)
             dt = boosting.run(dt = dt,
