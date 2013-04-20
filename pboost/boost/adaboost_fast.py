@@ -225,6 +225,243 @@ class AdaBoostFastWL(WeakLearner):
         self.__label = np.logical_not(self.__not_label)
     
     def run(self,dt):
+        if self.pb.omp_threads==1:
+            return self.single_thread(dt)
+        else:
+            return self.multi_thread(dt)
+
+    def multi_thread(self,dt):
+#         dt = np.copy(dt)
+        label = self.__label
+        index = self.__index
+        F = index.shape[0]/4*4
+        N = index.shape[1]
+        cpus = self.pb.omp_threads
+        code = """
+               omp_set_num_threads(cpus);
+               float max_e = -1000.0;
+               float min_e = 1000.0;
+               int max_d1 = -1;
+               int max_d2 = -1;
+               int min_d1 = -1;
+               int min_d2 = -1;
+               float e1 = 0.0;
+               float e2 = 0.0;
+               float err_best = -1.0;
+               int d1 = -1;
+               int d2 = -1;
+               int d3 = -1;
+               int d4 = -1;
+               float w01_max = 0.0;
+               float w00_max = 0.0;
+               float w01_bh = 0.0;
+               float w00_bh = 0.0;
+               float w10_bh = 0.0;
+               float w11_bh = 0.0;
+    
+               for (int j=0; j<N; ++j){
+                   if (label(j) == 1){
+                       w01_max = w01_max + dt(j);
+                       dt(j) = -dt(j); 
+                   }
+                   else{
+                       w00_max = w00_max + dt(j);
+                   }
+               }
+               
+               #pragma omp parallel
+               {
+                   float max_e_array[4] __attribute__ ((aligned (16)));
+                   float min_e_array[4] __attribute__ ((aligned (16)));
+                   float cmp[4] __attribute__ ((aligned (16)));
+                   float max_d1_array[4] __attribute__ ((aligned (16)));
+                   float max_d2_array[4] __attribute__ ((aligned (16)));
+                   float min_d1_array[4] __attribute__ ((aligned (16)));
+                   float min_d2_array[4] __attribute__ ((aligned (16)));
+                   for (int i = 0; i<4; i++){
+                       max_e_array[i] = -1000.0;
+                       min_e_array[i] = 1000.0;
+                       cmp[i] = -1.0;
+                       max_d1_array[i] = -1;
+                       max_d2_array[i] = -1;
+                       min_d1_array[i] = -1;
+                       min_d2_array[i] = -1;               
+                   }
+                   __m128 err =  _mm_setzero_ps();
+                   __m128 a =  _mm_setzero_ps();
+                   __m128 kk =  _mm_setzero_ps();
+                   __m128 jj =  _mm_setzero_ps();
+                   __m128 mask =  _mm_setzero_ps();
+                   __m128 max_err =  _mm_set1_ps(-1000.0);
+                   __m128 min_err =  _mm_set1_ps(1000.0);
+                   __m128 max_d1b =  _mm_set1_ps(-1.0);
+                   __m128 min_d1b =  _mm_set1_ps(-1.0);
+                   __m128 max_d2b =  _mm_set1_ps(-1.0);
+                   __m128 min_d2b =  _mm_set1_ps(-1.0);
+                   int masksum = 0;
+                   
+                   #pragma omp for nowait 
+                   for (int k=0; k<F/4; k++ ){
+                       err =  _mm_setzero_ps();
+                       kk = _mm_set_ps((float)4*k+3,
+                                       (float)4*k+2,
+                                       (float)4*k+1,
+                                       (float)4*k);
+                       for (int j=0; j<N; ++j ){
+                           a = _mm_set_ps(dt(index(4*k+3,j)),
+                                          dt(index(4*k+2,j)),
+                                          dt(index(4*k+1,j)),
+                                          dt(index(4*k,j)));
+                           err = _mm_add_ps(err,a);
+                           mask = _mm_cmpgt_ps(err,max_err);
+                           masksum = _mm_movemask_ps( mask );
+                           if ( masksum != 0 ){
+                               jj = _mm_set1_ps((float)j);
+                               max_err = _mm_xor_ps(max_err,
+                                                    _mm_and_ps(mask,_mm_xor_ps(err,max_err)));
+                               max_d1b = _mm_xor_ps(max_d1b,
+                                                    _mm_and_ps(mask,_mm_xor_ps(kk,max_d1b)));
+                               max_d2b = _mm_xor_ps(max_d2b,
+                                                    _mm_and_ps(mask,_mm_xor_ps(jj,max_d2b)));
+                           }
+                           
+                           mask = _mm_cmplt_ps(err,min_err);
+                           masksum = _mm_movemask_ps( mask );
+                           if ( masksum != 0 ){
+                               jj = _mm_set1_ps((float)j);
+                               min_err = _mm_xor_ps(min_err,
+                                                    _mm_and_ps(mask,_mm_xor_ps(err,min_err)));
+                               min_d1b = _mm_xor_ps(min_d1b,
+                                                    _mm_and_ps(mask,_mm_xor_ps(kk,min_d1b)));
+                               min_d2b = _mm_xor_ps(min_d2b,
+                                                    _mm_and_ps(mask,_mm_xor_ps(jj,min_d2b)));
+                           }
+                           }
+                   }
+                   
+                   _mm_store_ps(max_e_array,max_err);
+                   _mm_store_ps(max_d1_array,max_d1b);
+                   _mm_store_ps(max_d2_array,max_d2b);
+                   
+                   _mm_store_ps(min_e_array,min_err);
+                   _mm_store_ps(min_d1_array,min_d1b);
+                   _mm_store_ps(min_d2_array,min_d2b);
+                           
+                   #pragma omp critical
+                   {
+                       for (int i = 0; i<4; i++){
+                           if (max_e_array[i] > max_e){
+                               max_e = max_e_array[i];
+                               max_d1 = max_d1_array[i];
+                               max_d2 = max_d2_array[i];
+                           }                       
+                           if (min_e_array[i] < min_e){
+                               min_e = min_e_array[i];
+                               min_d1 = min_d1_array[i];
+                               min_d2 = min_d2_array[i];
+                           }                       
+                       }
+                    }
+               }
+               for (int j=0; j<N; ++j){
+                   if (label(j) == 1){
+                       dt(j) = -dt(j); 
+                   }
+               }
+               
+               e1 = w01_max + min_e;
+               e2 = w00_max - max_e; 
+               if (e1 < e2){
+                   d1 = min_d1;
+                   d2 = min_d2;
+                   err_best = e1;
+               }
+               else{
+                   d1 = max_d1;
+                   d2 = max_d2;
+                   err_best = e2;
+               }
+               d3 = index(d1,d2);
+               d4 = d3;
+    
+               int i = -1; 
+               for (int j=0; j < d2+1; ++j ){
+                   i = index(d1,j);
+                   if (label(i) == 1){
+                       w01_bh = w01_bh + dt(i);
+                   }
+                   else{
+                       w00_bh = w00_bh + dt(i); 
+                   }
+               }
+               w10_bh = w00_max - w00_bh;
+               w11_bh = w01_max - w01_bh;
+               
+               float eps = 0.001 / N;
+               if (err_best < eps){
+                   err_best = eps;
+               }
+               float c0 = 0.0;
+               float c1 = 0.0;
+               float err_best_n = 1.0 - err_best;
+               float alpha = 0.5 * std::log((err_best_n) / err_best);
+               if (w00_bh < w01_bh){
+                    c0 = alpha;
+               }
+               else{
+                    c0 = -alpha;
+               }
+                
+               if (w10_bh < w11_bh){
+                    c1 = alpha;
+               }
+               else{
+                    c1 = -alpha;
+               }
+               
+               py::tuple results(7);
+               results[0] = err_best;
+               results[1] = d1;
+               results[2] = d2;
+               results[3] = d3;
+               results[4] = d4;
+               results[5] = c0;
+               results[6] = c1;
+    
+               return_val = results;
+               """
+        
+        rtrn = weave.inline(code,
+                            ['dt','label','index', 'N', 'F','cpus'],
+                            type_converters = weave.converters.blitz,
+                            compiler = 'gcc',
+                            extra_compile_args = [
+                            "-fopenmp",
+                            "-pthread",
+                            "-O6",
+                            "-funroll-all-loops",
+                            "-fomit-frame-pointer",
+                            "-msse2",
+                            "-ftree-vectorize",
+                            "-ffast-math",
+                            "-funroll-loops",
+                            "-ftracer",
+                            ],
+                            extra_link_args = ['-lgomp'],
+                            headers = ['<cmath>','<emmintrin.h>','<omp.h>','<stdio.h>'])
+        (err_best,d1,d2,d3,d4,c0,c1) = rtrn
+        d1 = int(d1)
+        d2 = int(d2)
+        d3 = int(d3)
+        d4 = int(d4)
+        self.__bout = np.zeros(N,dtype="bool")
+        self.__bout[index[d1,0:d2+1]] = True
+        d5 = self.pb.feature_mapping[d1]
+        val = np.array([err_best,self.pb.rank, d1, d2, d3, d4, d5, c0, c1])
+        return val,self.__bout
+            
+    
+    def single_thread(self,dt):
 #         dt = np.copy(dt)
         label = self.__label
         index = self.__index

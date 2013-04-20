@@ -86,6 +86,7 @@ class PBoost():
         self.show_plots = self.conf_dict['show_plots']
         self.deduplicationEN = self.conf_dict['deduplication']!='n'
         self.deduplication = self.conf_dict['deduplication']
+        self.omp_threads = self.conf_dict['omp_threads']
         
         self.isLeader = False
         self.logEN = logEN

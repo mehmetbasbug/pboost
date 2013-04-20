@@ -25,7 +25,7 @@ def get_configuration(conf_num, conf_path = "./configurations.cfg"):
     required_options = ('train_file','test_file','factory_files',
                         'algorithm','rounds','xval_no',
                         'working_dir','max_memory','show_plots',
-                        'deduplication',
+                        'deduplication','omp_threads'
                         )
     my_dict = dict()
     arbitrary = dict()
@@ -77,6 +77,18 @@ def get_configuration(conf_num, conf_path = "./configurations.cfg"):
 
     if my_dict['deduplication'] == None:
         my_dict['deduplication'] = 'n'
+
+    if my_dict['omp_threads'] == None:
+        my_dict['omp_threads'] = 1
+        
+    if my_dict['omp_threads'] != None:
+        try:
+            my_dict['omp_threads'] = int(my_dict['omp_threads'])
+            if my_dict['omp_threads'] <= 0:
+                raise Exception("Error : Configuration field ``omp_threads`` "+
+                                    "must be positive.")
+        except ValueError:
+            print "Configuration field ``omp_threads`` must be an integer."
 
 
     # Convert strings to ints for numerical fields

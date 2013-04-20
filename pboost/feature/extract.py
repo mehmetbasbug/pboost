@@ -1,7 +1,7 @@
 import sys,json,os,h5py,sqlite3
 import numpy as np
 import inspect
-import pybloomfilter
+# import pybloomfilter
 from pboost.feature.factory import BaseFeatureFactory
 from bitarray import bitarray
 
@@ -108,15 +108,15 @@ class Extractor():
 
         all_features = self.read_features()
         if self.pb.deduplicationEN:
-            if self.pb.deduplication == 'BloomFilter':
-                el = BloomFilter(capacity = len(all_features),
-                                 error_rate = 0.01)
-            elif self.pb.deduplication == 'InversionCounter':
-                el = InversionCounter(threshold = self.pb.total_exam_no/10,
-                                validated_set = self.pb.index_matrix)
-            elif self.pb.deduplication == 'MapFilter':
+#             if self.pb.deduplication == 'BloomFilter':
+#                 el = BloomFilter(capacity = len(all_features),
+#                                  error_rate = 0.01)
+#             if self.pb.deduplication == 'InversionCounter':
+#                 el = InversionCounter(threshold = self.pb.total_exam_no/10,
+#                                 validated_set = self.pb.index_matrix)
+            if self.pb.deduplicationEN:
                 el = MapFilter(arraylength = self.pb.total_exam_no,
-                               threshold = 0.9)
+                               threshold = 0.1)
             else:
                 raise Exception("Error : Unknown feature deduplication method.")
                 
@@ -207,58 +207,58 @@ class Extractor():
         if self.pb.testEN:
             test_file.close()
 
-class InversionCounter():
-    def __init__(self,
-                 threshold,
-                 validated_set
-                 ):
-        self.threshold = threshold
-        self.validated_set = validated_set
-        self.counter = 0
-
-    def merge_and_count(self,a, b):
-        c = []
-        count = 0
-        i, j = 0, 0
-        while i < len(a) and j < len(b):
-            c.append(min(b[j], a[i]))
-            if b[j] < a[i]:
-                count += len(a) - i
-                j+=1
-            else:
-                i+=1
-        c += a[i:] + b[j:]
-        return count, c
-
-    def sort_and_count(self,L):
-        if len(L) == 1: return 0, L
-        n = len(L) // 2 
-        a, b = L[:n], L[n:]
-        ra, a = self.sort_and_count(a)
-        rb, b = self.sort_and_count(b)
-        r, L = self.merge_and_count(a, b)
-        return ra+rb+r, L
-
-    def get_permutation(self,L1, L2):
-        permutation = map(dict((v, i) for i, v in enumerate(L1)).get, L2)
-        return permutation
-    
-    def validate(self,new):
-        if self.counter == 0:
-            self.counter = 1
-            return True
-        else:
-            for k in np.arange(self.counter):
-                x = self.validated_set[k,:]
-                perm = self.get_permutation(x,new)
-                inv = self.sort_and_count(perm)[0]
-                if inv < self.threshold:
-                    return False
-            self.counter = self.counter + 1
-            return True
-    
-    def finalize(self):
-        return True
+# class InversionCounter():
+#     def __init__(self,
+#                  threshold,
+#                  validated_set
+#                  ):
+#         self.threshold = threshold
+#         self.validated_set = validated_set
+#         self.counter = 0
+# 
+#     def merge_and_count(self,a, b):
+#         c = []
+#         count = 0
+#         i, j = 0, 0
+#         while i < len(a) and j < len(b):
+#             c.append(min(b[j], a[i]))
+#             if b[j] < a[i]:
+#                 count += len(a) - i
+#                 j+=1
+#             else:
+#                 i+=1
+#         c += a[i:] + b[j:]
+#         return count, c
+# 
+#     def sort_and_count(self,L):
+#         if len(L) == 1: return 0, L
+#         n = len(L) // 2 
+#         a, b = L[:n], L[n:]
+#         ra, a = self.sort_and_count(a)
+#         rb, b = self.sort_and_count(b)
+#         r, L = self.merge_and_count(a, b)
+#         return ra+rb+r, L
+# 
+#     def get_permutation(self,L1, L2):
+#         permutation = map(dict((v, i) for i, v in enumerate(L1)).get, L2)
+#         return permutation
+#     
+#     def validate(self,new):
+#         if self.counter == 0:
+#             self.counter = 1
+#             return True
+#         else:
+#             for k in np.arange(self.counter):
+#                 x = self.validated_set[k,:]
+#                 perm = self.get_permutation(x,new)
+#                 inv = self.sort_and_count(perm)[0]
+#                 if inv < self.threshold:
+#                     return False
+#             self.counter = self.counter + 1
+#             return True
+#     
+#     def finalize(self):
+#         return True
     
 class MapFilter():
     def __init__(self,
@@ -293,21 +293,20 @@ class MapFilter():
     def finalize(self):
         return True
     
-
-class BloomFilter():
-    def __init__(self,
-                 capacity,
-                 error_rate
-                 ):
-        self.bf = pybloomfilter.BloomFilter(capacity,error_rate,None)
-   
-    def validate(self,new):
-        ind_str = np.ndarray.tostring(new)
-        return not self.bf.add(ind_str)
-    
-    def finalize(self):
-        self.bf.clear_all()
-        return True
+# class BloomFilter():
+#     def __init__(self,
+#                  capacity,
+#                  error_rate
+#                  ):
+#         self.bf = pybloomfilter.BloomFilter(capacity,error_rate,None)
+#    
+#     def validate(self,new):
+#         ind_str = np.ndarray.tostring(new)
+#         return not self.bf.add(ind_str)
+#     
+#     def finalize(self):
+#         self.bf.clear_all()
+#         return True
         
 class Feature():
     def __init__(self,
