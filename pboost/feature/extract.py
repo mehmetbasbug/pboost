@@ -1,4 +1,4 @@
-import sys,json,os,h5py,sqlite3
+import sys,ujson,os,h5py,sqlite3
 import numpy as np
 import inspect
 # import pybloomfilter
@@ -42,7 +42,7 @@ class Extractor():
         conn.close()
         f = h5py.File(self.pb.train_fp,'r')
         traindata = f['data']
-        total_feature_no = None
+        total_feature_no = 0
         itr = FactoryFileIterator(self.pb.factory_files)
         while(itr.has_next()):
             ff = itr.get_next()
@@ -52,7 +52,7 @@ class Extractor():
                                       db_path = self.pb.feature_db)
                 kwargs = self.pb.conf_dict['arbitrary']
                 factory.produce(**kwargs)
-                total_feature_no = factory.finalize()
+                total_feature_no = total_feature_no + factory.finalize()
         f.close()
         return total_feature_no
         
@@ -359,7 +359,7 @@ class Feature():
             List of arguments
             
         """
-        args = json.loads(params)
+        args = ujson.loads(params)
         return self.fc.blueprint(*args)
 
 class FactoryFile():
