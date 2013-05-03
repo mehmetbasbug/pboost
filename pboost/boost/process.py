@@ -75,28 +75,10 @@ class Process():
             raise Exception("Unknown Boosting Algorithm")
         
         for r in range(self.pb.rounds):
-            val,bout = wl.run(dt)
-            new = self.pb.comm.allreduce(val[0],None, MPI.MINLOC)
-            val = self.pb.comm.bcast(val, root=new[1])
-            bout_ba = bitarray(list(bout))
-            bout_c = bout_ba.tobytes()
-            bout_c = self.pb.comm.bcast(bout_c, root=new[1])
-            bout_ba = bitarray()
-            bout_ba.frombytes(bytes(bout_c))
-            bout = np.array(bout_ba.tolist()[0:self.pb.total_exam_no])
-            (rnk, d1, d2, d3, d4, d5, c0, c1) = val[1:9]
-            rnk = int(rnk)
+            tree = wl.run(dt)
             dt = boosting.run(dt = dt,
                               r = r,
-                              rnk = rnk,
-                              d1 = d1,
-                              d2 = d2,
-                              d3 = d3,
-                              d4 = d4,
-                              d5 = d5,
-                              c0 = c0,
-                              c1 = c1,
-                              bout = bout)
+                              tree = tree)
             
         if self.isXvalMain:
             boosting.finalize()

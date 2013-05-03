@@ -79,11 +79,6 @@ class Reporter():
         if not os.path.exists(self.out_fp):
             os.makedirs(self.out_fp)
     
-    def _get_feature_def(self,cursor,rowid):
-        s = 'SELECT * FROM features WHERE rowid='+str(rowid)
-        cursor.execute(s)
-        return list(cursor.fetchone())
-    
     def dump(self):
         """ 
         Dumps in the final classifier directory a set of information 
@@ -184,22 +179,18 @@ class Reporter():
         in portable file
         """
         conn = sqlite3.connect(self.pb.feature_db)
-        cursor = conn.cursor()        
-        
-        for h_ind in np.arange(len(self.hypotheses)):
-            h = self.hypotheses[h_ind]
-            offset = self.pb.partition[h['rnk']]
-            fn_def = self._get_feature_def(cursor,h['d5'])
-            head,tail = os.path.split(fn_def[0])
-            root,ext =  os.path.splitext(tail)
-            fn_def[0] = './'+root+'.py'
-            h['fn_def'] = fn_def
-            self.hypotheses[h_ind] = h
+        cursor = conn.cursor()
+        hypotheses = list()
+        for h in self.hypotheses:
+            for node in h.get_all_nodes():
+                node.set_fn_def(cursor)
+            d = h.to_dict()
+            hypotheses.append(d)
         conn.close()
         
         """Save hypotheses to final_classifier"""
         hypotheses_path = self.out_fp + 'hypotheses.npy'
-        np.save(hypotheses_path, self.hypotheses)
+        np.save(hypotheses_path, hypotheses)
         
         """Copy user blueprintd functions to final_classifier"""
         for feature_fp in self.pb.factory_files:

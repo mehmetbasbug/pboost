@@ -1,6 +1,6 @@
 import numpy as np
 import argparse,h5py
-from pboost.feature.extract import Feature
+from pboost.boost.decision_tree import Tree
 
 def main(data_fp):
     try:
@@ -11,25 +11,11 @@ def main(data_fp):
         pass
     
     hypotheses = np.load('hypotheses.npy')
-    dump_f = np.load('dump.npz')
-    (working_dir, alg, rounds, train_exam_no, 
-     test_exam_no, testEN, xval_no, xvalEN) = dump_f['meta']
-
-    result = np.zeros((data.shape[0],))
-    for k in range(hypotheses.shape[0]):
-        h = hypotheses[k]
-        feat = Feature(data = data,
-                       feature_def = h['fn_def'])
-        tmp = feat.apply(params = h['fn_def'][2])
-        if alg == 'conf-rated':
-            s1 = np.int16([tmp <= h['v']])*h['c0']
-            s2 = np.int16([tmp > h['v']])*h['c1']
-        elif alg == 'adaboost':
-            s1 = np.int16([tmp <= h['v']])*np.sign(h['c0'])
-            s2 = np.int16([tmp > h['v']])*np.sign(h['c1'])
-        else:
-            raise Exception("Unknown Boosting Algorithm")
-        result = result + s1[0] + s2[0]
+    result = np.zeros(data.shape[0])
+    for d in hypotheses:
+        h = Tree()
+        h.from_dict(d)
+        result = result + h.predict(data)
     if data_file:
         data_file.close()
     prediction = (np.sign(result)+1)/2

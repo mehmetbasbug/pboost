@@ -25,7 +25,7 @@ def get_configuration(conf_num, conf_path = "./configurations.cfg"):
     required_options = ('train_file','test_file','factory_files',
                         'algorithm','rounds','xval_no',
                         'working_dir','max_memory','show_plots',
-                        'deduplication','omp_threads'
+                        'deduplication','omp_threads','tree_depth'
                         )
     my_dict = dict()
     arbitrary = dict()
@@ -80,6 +80,9 @@ def get_configuration(conf_num, conf_path = "./configurations.cfg"):
 
     if my_dict['omp_threads'] == None:
         my_dict['omp_threads'] = 1
+
+    if my_dict['tree_depth'] == None:
+        my_dict['tree_depth'] = 1
         
     if my_dict['omp_threads'] != None:
         try:
@@ -90,6 +93,14 @@ def get_configuration(conf_num, conf_path = "./configurations.cfg"):
         except ValueError:
             print "Configuration field ``omp_threads`` must be an integer."
 
+    if my_dict['tree_depth'] != None:
+        try:
+            my_dict['tree_depth'] = int(my_dict['tree_depth'])
+            if my_dict['tree_depth'] <= 0:
+                raise Exception("Error : Configuration field ``tree_depth`` "+
+                                    "must be positive.")
+        except ValueError:
+            print "Configuration field ``tree_depth`` must be an integer."
 
     # Convert strings to ints for numerical fields
     if my_dict['xval_no'] != None:

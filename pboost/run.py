@@ -1,5 +1,7 @@
 import os, sys, argparse
 from mpi4py import MPI
+import traceback
+
 try:
     from pboost.environment.pb import PBoost
 except ImportError:
@@ -48,6 +50,6 @@ if __name__ == '__main__':
             pb.run()
             pb = None # Explicitly remove the object for garbage collection
         except Exception as e:
-            print e
+            print traceback.format_exc()
             comm.Abort()
             sys.exit()

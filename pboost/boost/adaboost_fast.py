@@ -1,7 +1,10 @@
-import h5py
+import h5py,os,sqlite3
 import numpy as np
 from pboost.boost.generic import Boosting, WeakLearner
 from scipy import weave
+from bitarray import bitarray
+from mpi4py import MPI
+from pboost.boost.decision_tree import Node,Tree
 
 class AdaBoostFast(Boosting):
     def __init__(self, boosting_p):
@@ -44,7 +47,7 @@ class AdaBoostFast(Boosting):
         self.tl[self.process.label == 0] = -1
         
 
-    def run(self, dt, r, rnk, d1, d2, d3, d4, d5, c0, c1, bout):
+    def run(self, dt, r, tree):
         """
         
         Run a single round of boosting
@@ -89,18 +92,11 @@ class AdaBoostFast(Boosting):
 
                 
         """Create a dictionary for the best hypothesis"""
-        v = 0.0
-        h = {'rnk':rnk,
-             'd1':d1,
-             'd2':d2,
-             'd3':d3,
-             'd4':d4,
-             'd5':d5,
-             'v':v,
-             'c0':c0,
-             'c1':c1}
         
-        self.hypotheses.append(h)
+        self.hypotheses.append(tree)
+        c0 = tree.c0
+        c1 = tree.c1
+        bout = tree.pred
         
         """Update training and validation predictions"""
         if self.process.classifyEN:
@@ -137,13 +133,14 @@ class AdaBoostFast(Boosting):
         rnk_list = list()
         for r in np.arange(self.pb.rounds):
             h = self.hypotheses[r]
-            rnk = h['rnk']
-            try:
-                inverse[rnk].append(r)
-            except KeyError:
-                inverse[rnk] = [r,]
-                rnk_list.append(rnk)
-                pass
+            for node in h.get_all_nodes():
+                rnk = node.rnk
+                try:
+                    inverse[rnk].append(node)
+                except KeyError:
+                    inverse[rnk] = [node,]
+                    rnk_list.append(rnk)
+                    pass
         
         """
         For each rank read the hypotheses space to update threshold and test
@@ -157,21 +154,22 @@ class AdaBoostFast(Boosting):
                 print model_fp
                 print e
             unsorted_ds = mf["train_unsorted"]
-            for r  in inverse[rnk]:
-                h = self.hypotheses[r]
-                d1 = h['d1']
-                d3 = h['d3']
-                d4 = h['d4']
+            for node  in inverse[rnk]:
+                d1 = node.d1
+                d3 = node.d3
+                d4 = node.d4
                 vec = unsorted_ds[d1, :]
-                h['v'] = (vec[d3]+vec[d4])/2.0
-                self.hypotheses[r] = h
+                node.v = (vec[d3]+vec[d4])/2.0
                 if self.pb.testEN:
                     tVals = mf["test_unsorted"][d1,self.pb.test_ind1:self.pb.test_ind2]
-                    s1 = np.int16([tVals <= h['v']])*h['c0']
-                    s2 = np.int16([tVals > h['v']])*h['c1']
-                    self.test_predictions[:,r]= s1[0] + s2[0]
+                    node.set_pred(val = tVals, unmasked = True)
             mf.close()
+        
         if self.pb.testEN:
+            for r in np.arange(self.pb.rounds):
+                h = self.hypotheses[r]
+                h.pred = np.zeros(self.pb.test_ind2 - self.pb.test_ind1)
+                self.test_predictions[:,r] = h.predict()
             np.cumsum(self.test_predictions, axis=1, out=self.test_predictions)
         
     def get_hypotheses(self):
@@ -197,8 +195,7 @@ class AdaBoostFast(Boosting):
         Returns testing predictions
         """
         return self.test_predictions
-        
-
+            
 class AdaBoostFastWL(WeakLearner):
     
     def __init__(self, boosting_p):
@@ -225,10 +222,84 @@ class AdaBoostFastWL(WeakLearner):
         self.__label = np.logical_not(self.__not_label)
     
     def run(self,dt):
-        if self.pb.omp_threads==1:
-            return self.single_thread(dt)
+        tree = Tree()
+        tree.pred = np.zeros(self.pb.total_exam_no,dtype='bool')
+        root = Node()
+        tree.root = self.construct_tree(root,dt)
+        tree.iterative_boolean_predict()
+        w00 = 0.0
+        w01 = 0.0
+        w10 = 0.0
+        w11 = 0.0
+        for k,w in enumerate(dt):
+            if tree.pred[k]:
+                if self.__label[k]:
+                    w01 = w01 + w
+                else:
+                    w00 = w00 + w
+            else:
+                if self.__label[k]:
+                    w11 = w11 + w
+                else:
+                    w10 = w10 + w
+        err_best = min(w00,w01)+min(w10,w11)
+        eps = np.float32(1e-3 / self.process.train_exam_no);
+        if err_best < eps:
+            err_best = eps
+        alpha = 0.5 * np.log((1.0-err_best)/err_best)
+        if w00 < w01:
+            c0 = alpha
         else:
-            return self.multi_thread(dt)
+            c0 = -alpha
+        if w10 < w11:
+            c1 = alpha
+        else:
+            c1 = -alpha
+        tree.c0 = c0
+        tree.c1 = c1
+        return tree
+        
+    def construct_tree(self,node,dt):
+        if node.depth == self.pb.depth:
+            return self.update_node(node,dt)
+        else:
+            node = self.update_node(node,dt)
+            left_node = Node()
+            node.insert_child(left_node,isLeft=True)
+            right_node = Node()
+            node.insert_child(right_node,isLeft=False)
+            self.construct_tree(left_node,dt)
+            self.construct_tree(right_node,dt)
+            return node
+        
+    def update_node(self,node,distribution):
+        dt = np.copy(distribution)
+        if node.mask is not None:
+            dt[node.mask] = 0.0
+        if self.pb.omp_threads==1:
+            val,bout = self.single_thread(dt)
+        else:
+            val,bout = self.multi_thread(dt)
+        new = self.pb.comm.allreduce(val[0],None, MPI.MINLOC)
+        val = self.pb.comm.bcast(val, root=new[1])
+        bout_ba = bitarray(list(bout))
+        bout_c = bout_ba.tobytes()
+        bout_c = self.pb.comm.bcast(bout_c, root=new[1])
+        bout_ba = bitarray()
+        bout_ba.frombytes(bytes(bout_c))
+        bout = np.array(bout_ba.tolist()[0:self.pb.total_exam_no])
+        (rnk, d1, d2, d3, d4, d5, c0, c1) = val[1:9]
+        rnk = int(rnk)
+        node.rnk = rnk
+        node.d1 = d1
+        node.d2 = d2
+        node.d3 = d3
+        node.d4 = d4
+        node.d5 = d5
+        node.c0 = c0
+        node.c1 = c1
+        node.set_pred(pred = bout)
+        return node
 
     def multi_thread(self,dt):
 #         dt = np.copy(dt)
@@ -454,11 +525,11 @@ class AdaBoostFastWL(WeakLearner):
         d2 = int(d2)
         d3 = int(d3)
         d4 = int(d4)
-        self.__bout = np.zeros(N,dtype="bool")
-        self.__bout[index[d1,0:d2+1]] = True
+        bout = np.zeros(N,dtype="bool")
+        bout[index[d1,0:d2+1]] = True
         d5 = self.pb.feature_mapping[d1]
         val = np.array([err_best,self.pb.rank, d1, d2, d3, d4, d5, c0, c1])
-        return val,self.__bout
+        return val,bout
             
     
     def single_thread(self,dt):
@@ -661,8 +732,8 @@ class AdaBoostFastWL(WeakLearner):
         d2 = int(d2)
         d3 = int(d3)
         d4 = int(d4)
-        self.__bout = np.zeros(N,dtype="bool")
-        self.__bout[index[d1,0:d2+1]] = True
+        bout = np.zeros(N,dtype="bool")
+        bout[index[d1,0:d2+1]] = True
         d5 = self.pb.feature_mapping[d1]
         val = np.array([err_best,self.pb.rank, d1, d2, d3, d4, d5, c0, c1])
-        return val,self.__bout
+        return val,bout
