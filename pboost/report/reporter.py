@@ -25,24 +25,35 @@ class Reporter():
         
         """default values None. Over-ridden if necessary"""
         self.train_predictions = None
+        self.train_error = None
+        self.train_auc = None
         self.test_predictions = None
+        self.test_error = None
+        self.test_auc = None
         self.hypotheses = None
         self.validation_predictions = None
+        self.validation_error = None
+        self.validation_auc = None
         self.out_fp = None
         
         self._create_dir()
-        if self.pb.testEN:
-            self.test_label = pb.get_label(source = 'test')
-            self._read_train_and_test()
-        else:
-            self._read_train()
-
+        
         if self.pb.xvalEN:
             self.validation_predictions = np.zeros(
                                           [self.pb.total_exam_no,self.pb.rounds],
                                           dtype="float32"
                                           )
             self._combine_val()
+            
+        if self.pb.testEN:
+            self.test_label = pb.get_label(source = 'test')
+            self._read_train_and_test()
+            self._calculate_train()
+            self._calculate_test()
+        else:
+            self._read_train()
+            self._calculate_train()
+            
         
     def _read_train(self):
         """
@@ -54,7 +65,42 @@ class Reporter():
         outfile = np.load(outfilename)
         self.train_predictions = outfile['train_predictions']
         self.hypotheses = outfile['hypotheses']
-    
+        
+    def _calculate_train(self):
+        self.train_auc = np.zeros(self.pb.rounds)
+        self.train_error = np.zeros(self.pb.rounds)
+        self.validation_auc = np.zeros(self.pb.rounds)
+        self.validation_error = np.zeros(self.pb.rounds)
+
+        for round in range(self.pb.rounds):
+            train_pred = self.train_predictions[:,round]
+            z1 = zip(self.train_label, train_pred)
+            roc1 = pyroc.ROCData(z1)
+            self.train_auc[round] = roc1.auc()
+            self.train_error[round] = sum((2*self.train_label-1) 
+                                   != np.sign(self.train_predictions[:, round])
+                                   )/np.float32(self.pb.total_exam_no) 
+            if self.pb.xvalEN:
+                val_pred = self.validation_predictions[:,round]
+                z1 = zip(self.train_label, val_pred)
+                roc1 = pyroc.ROCData(z1)
+                self.validation_auc[round] = roc1.auc()
+                self.validation_error[round] = sum((2*self.train_label-1) 
+                                       != np.sign(self.validation_predictions[:, round])
+                                       )/np.float32(self.pb.total_exam_no) 
+
+    def _calculate_test(self):
+        self.test_auc = np.zeros(self.pb.rounds)
+        self.test_error = np.zeros(self.pb.rounds)
+        for round in range(self.pb.rounds):
+            test_pred = self.test_predictions[:,round]
+            z1 = zip(self.test_label, test_pred)
+            roc1 = pyroc.ROCData(z1)
+            self.test_auc[round] = roc1.auc()
+            self.test_error[round] = sum((2*self.test_label-1) 
+                                   != np.sign(self.test_predictions[:, round])
+                                   )/np.float32(self.pb.test_exam_no) 
+        
     def _read_train_and_test(self):
         outfilename = str(self.pb.wd + 
                           "out_"+str(self.pb.conf_num)+"_0.npz")
@@ -100,17 +146,27 @@ class Reporter():
                 np.savez(dump_filename,
                          meta = meta,
                          train_predictions = self.train_predictions,
+                         train_error = self.train_error,
+                         train_auc = self.train_auc,
                          train_label = self.train_label,
                          test_predictions = self.test_predictions,
+                         test_error = self.test_error,
+                         test_auc = self.test_auc,
                          test_label = self.test_label,
                          validation_predictions = self.validation_predictions,
+                         validation_error = self.validation_error,
+                         validation_auc = self.validation_auc,
                          xval_indices = self.pb.xval_indices)
             else:
                 np.savez(dump_filename,
                          meta = meta,
                          train_predictions = self.train_predictions,
+                         train_error = self.train_error,
+                         train_auc = self.train_auc,
                          train_label = self.train_label,
                          test_predictions = self.test_predictions,
+                         test_error = self.test_error,
+                         test_auc = self.test_auc,
                          test_label = self.test_label,
                          )
         else:
@@ -118,13 +174,19 @@ class Reporter():
                 np.savez(dump_filename,
                          meta = meta,
                          train_predictions = self.train_predictions,
+                         train_error = self.train_error,
+                         train_auc = self.train_auc,
                          train_label = self.train_label,
                          validation_predictions = self.validation_predictions,
+                         validation_error = self.validation_error,
+                         validation_auc = self.validation_auc,
                          xval_indices = self.pb.xval_indices)                
             else:
                 np.savez(dump_filename,
                          meta = meta,
                          train_predictions = self.train_predictions,
+                         train_error = self.train_error,
+                         train_auc = self.train_auc,
                          train_label = self.train_label,
                          )
 
@@ -142,10 +204,16 @@ class Reporter():
                   xval_no = self.pb.xval_no, 
                   xvalEN = self.pb.xvalEN,
                   train_predictions = self.train_predictions, 
+                  train_error = self.train_error,
+                  train_auc = self.train_auc,
                   train_label = self.train_label, 
-                  test_predictions = self.test_predictions, 
+                  test_predictions = self.test_predictions,
+                  test_error = self.test_error,
+                  test_auc = self.test_auc,
                   test_label = self.test_label, 
                   validation_predictions = self.validation_predictions, 
+                  validation_error = self.validation_error,
+                  validation_auc = self.validation_auc,
                   xval_indices = self.pb.xval_indices, 
                   filename = None,
                   basepath = self.out_fp,
@@ -160,11 +228,17 @@ class Reporter():
                   testEN = self.pb.testEN, 
                   xval_no = self.pb.xval_no, 
                   xvalEN = self.pb.xvalEN,
-                  train_predictions = self.train_predictions, 
+                  train_predictions = self.train_predictions,
+                  train_error = self.train_error,
+                  train_auc = self.train_auc, 
                   train_label = self.train_label, 
-                  test_predictions = self.test_predictions, 
+                  test_predictions = self.test_predictions,
+                  test_error = self.test_error,
+                  test_auc = self.test_auc,
                   test_label = self.test_label, 
                   validation_predictions = self.validation_predictions, 
+                  validation_error = self.validation_error,
+                  validation_auc = self.validation_auc,
                   xval_indices = self.pb.xval_indices, 
                   filename = None,
                   basepath = self.out_fp,
@@ -243,10 +317,16 @@ def plot_data(working_dir = None,
               xval_no = None, 
               xvalEN = None,
               train_predictions = None, 
+              train_error = None,
+              train_auc = None,
               train_label = None, 
-              test_predictions = None, 
+              test_predictions = None,
+              test_error = None,
+              test_auc = None, 
               test_label = None, 
-              validation_predictions = None, 
+              validation_predictions = None,
+              validation_error = None,
+              validation_auc = None, 
               xval_indices = None, 
               filename = None,
               basepath = None,
@@ -269,13 +349,19 @@ def plot_data(working_dir = None,
         rounds = int(rounds)
         train_exam_no = int(train_exam_no)
         train_predictions = f['train_predictions']
+        train_error = f['train_error']
+        train_auc = f['train_auc']
         train_label = f['train_label']
         if testEN:
             test_exam_no = int(test_exam_no)
             test_predictions = f['test_predictions']
+            test_error = f['test_error']
+            test_auc = f['test_auc']
             test_label = f['test_label']
         if xvalEN:
             validation_predictions = f['validation_predictions']
+            validation_error = f['validation_error']
+            validation_auc = f['validation_auc']
         if not basepath:
             basepath = os.path.realpath("./")
     elif not basepath:
@@ -289,7 +375,7 @@ def plot_data(working_dir = None,
             roc1 = pyroc.ROCData(z1)
             print("Info : Confusion matrix for combined validation "
                     +"error with zero threshold :")    
-            print(roc1.confusion_matrix(0))        
+            print(roc1.confusion_matrix(0))    
 
             """2) ROC plot based on testing error"""
             last_round = test_predictions[:,-1]
@@ -306,87 +392,108 @@ def plot_data(working_dir = None,
                                     only_save = only_save)
             
             """3) Plot training error against number of rounds"""
-            training_error = np.zeros(shape = [rounds,1] , dtype = "float32")
-            test_error = np.zeros(shape = [rounds,1] , dtype = "float32")
-            val_error = np.zeros(shape = [rounds,1] , dtype = "float32")
-            for k in range(rounds):
-                training_error[k] = sum((2*train_label-1) 
-                                        != np.sign(train_predictions[:, k])
-                                        )/np.float32(train_exam_no)
-                val_error[k] = sum((2*train_label-1) 
-                                   != np.sign(validation_predictions[:, k])
-                                   )/np.float32(train_exam_no) 
-                test_error[k] = sum((2*test_label-1) 
-                                    != np.sign(test_predictions[:, k])
-                                    )/np.float32(test_exam_no)
-
-            training_err = sum((2*train_label-1) 
-                                 != np.sign(train_predictions[:, -1])
-                                 )/np.float32(train_exam_no)
             print ("Info : Training Error of the final classifier : "+ 
-                   str(training_err))
-            val_err = sum((2*train_label-1) 
-                            != np.sign(validation_predictions[:,-1])
-                            )/np.float32(train_exam_no)
+                   str(train_error[-1]))
             print ("Info : Validation Error of the final classifier : "+ 
-                   str(val_err))
-            test_err = sum((2*test_label-1) 
-                             != np.sign(test_predictions[:,-1])
-                             )/np.float32(test_exam_no)            
+                   str(validation_error[-1]))
             print ("Info : Testing Error of the final classifier : "+ 
-                   str(test_err))
+                   str(test_error[-1]))
             
             """Plotting using draw since it's non-blocking"""
             if not only_save:
                 plt.figure()
-                plt.subplot(2,2,1)
-                plt.plot(range(rounds), training_error)
+                plt.subplot(3,2,1)
+                plt.plot(range(rounds), train_error)
                 plt.xlabel('number of rounds')
                 plt.ylabel('training error')
                 plt.title('Training Error vs. Number of Rounds')
                 plt.draw()                    
 
-                plt.subplot(2,2,2)
-                plt.plot(range(rounds), val_error)
+                plt.subplot(3,2,2)
+                plt.plot(range(rounds), train_auc)
+                plt.xlabel('number of rounds')
+                plt.ylabel('training auc')
+                plt.title('Training Area Under ROC Curve vs. Number of Rounds')
+                plt.draw()                    
+
+                plt.subplot(3,2,3)
+                plt.plot(range(rounds), validation_error)
                 plt.xlabel('number of rounds')
                 plt.ylabel('validation error')
                 plt.title('Validation Error vs. Number of Rounds')
+                plt.draw()   
+
+                plt.subplot(3,2,4)
+                plt.plot(range(rounds), validation_auc)
+                plt.xlabel('number of rounds')
+                plt.ylabel('validation auc')
+                plt.title('Validation Area Under ROC Curve vs. Number of Rounds')
                 plt.draw()                    
 
-                plt.subplot(2,2,3)
+                plt.subplot(3,2,5)
                 plt.plot(range(rounds), test_error)
                 plt.xlabel('number of rounds')
-                plt.ylabel('testing error')
-                plt.title('Testing Error vs. Number of Rounds')             
+                plt.ylabel('test error')
+                plt.title('Test Error vs. Number of Rounds')
+                plt.draw()   
+
+                plt.subplot(3,2,6)
+                plt.plot(range(rounds), test_auc)
+                plt.xlabel('number of rounds')
+                plt.ylabel('test auc')
+                plt.title('Test Area Under ROC Curve vs. Number of Rounds')
                 plt.draw()                    
-                """show is blocking, and is called after all graphs are created"""
                 plt.show()
 
             plt.clf()
-            plt.plot(range(rounds), training_error)
+            plt.plot(range(rounds), train_error)
             plt.xlabel('number of rounds')
             plt.ylabel('training error')
             plt.title('Training Error vs. Number of Rounds')
+            plt.draw()                    
             plt.savefig(filename = basepath + "training_err.png")
 
-            """4) Plot test error against number of rounds"""
             plt.clf()
-            plt.plot(range(rounds), val_error)
+            plt.plot(range(rounds), train_auc)
+            plt.xlabel('number of rounds')
+            plt.ylabel('training auc')
+            plt.title('Training Area Under ROC Curve vs. Number of Rounds')
+            plt.draw()                    
+            plt.savefig(filename = basepath + "training_auc.png")
+
+            plt.clf()
+            plt.plot(range(rounds), validation_error)
             plt.xlabel('number of rounds')
             plt.ylabel('validation error')
             plt.title('Validation Error vs. Number of Rounds')
+            plt.draw()   
             plt.savefig(filename = basepath + "validation_err.png")
-            
-            """5) Plot test error against number of rounds"""
+
+            plt.clf()
+            plt.plot(range(rounds), validation_auc)
+            plt.xlabel('number of rounds')
+            plt.ylabel('validation auc')
+            plt.title('Validation Area Under ROC Curve vs. Number of Rounds')
+            plt.draw()                    
+            plt.savefig(filename = basepath + "validation_auc.png")
+
             plt.clf()
             plt.plot(range(rounds), test_error)
             plt.xlabel('number of rounds')
-            plt.ylabel('testing error')
-            plt.title('Testing Error vs. Number of Rounds')             
-            plt.savefig(filename = basepath + "testing_err.png")
+            plt.ylabel('test error')
+            plt.title('Test Error vs. Number of Rounds')
+            plt.draw()   
+            plt.savefig(filename = basepath + "test_err.png")
+                        
+            plt.clf()
+            plt.plot(range(rounds), test_auc)
+            plt.xlabel('number of rounds')
+            plt.ylabel('test auc')
+            plt.title('Test Area Under ROC Curve vs. Number of Rounds')
+            plt.draw()   
+            plt.savefig(filename = basepath + "test_auc.png")
             plt.close()
         else:
-            """1) ROC plot based on testing error"""
             last_round = test_predictions[:,-1]
             z = zip(test_label, last_round)
             roc = pyroc.ROCData(z)
@@ -397,144 +504,168 @@ def plot_data(working_dir = None,
                     +"error with zero threshold :")  
             print(roc.confusion_matrix(0))
 
-            """2) Plot training error against number of rounds"""
-            training_error = np.zeros(shape = [rounds,1] , dtype = "float32")
-            test_error = np.zeros(shape = [rounds,1] , dtype = "float32")
-            for k in range(rounds):
-                training_error[k] = sum((2*train_label-1) 
-                                        != np.sign(train_predictions[:, k])
-                                        )/np.float32(train_exam_no)
-                test_error[k] = sum((2*test_label-1) 
-                                    != np.sign(test_predictions[:, k])
-                                    )/np.float32(test_exam_no)
-            
-            training_err = sum((2*train_label-1) 
-                                 != np.sign(train_predictions[:, -1])
-                                 )/np.float32(train_exam_no)
             print ("Info : Training Error of the final classifier : "+ 
-                   str(training_err))
-            test_err = sum((2*test_label-1) 
-                             != np.sign(test_predictions[:,-1])
-                             )/np.float32(test_exam_no)            
+                   str(train_error[-1]))
             print ("Info : Testing Error of the final classifier : "+ 
-                   str(test_err))
+                   str(test_error[-1]))
             
+            """Plotting using draw since it's non-blocking"""
             if not only_save:
                 plt.figure()
-                plt.subplot(1,2,1)
-                plt.plot(range(rounds), training_error)
+                plt.subplot(2,2,1)
+                plt.plot(range(rounds), train_error)
                 plt.xlabel('number of rounds')
                 plt.ylabel('training error')
                 plt.title('Training Error vs. Number of Rounds')
                 plt.draw()                    
 
-                plt.subplot(1,2,2)
+                plt.subplot(2,2,2)
+                plt.plot(range(rounds), train_auc)
+                plt.xlabel('number of rounds')
+                plt.ylabel('training auc')
+                plt.title('Training Area Under ROC Curve vs. Number of Rounds')
+                plt.draw()                    
+
+                plt.subplot(2,2,3)
                 plt.plot(range(rounds), test_error)
                 plt.xlabel('number of rounds')
-                plt.ylabel('testing error')
-                plt.title('Testing Error vs. Number of Rounds')             
+                plt.ylabel('test error')
+                plt.title('Test Error vs. Number of Rounds')
+                plt.draw()   
+
+                plt.subplot(2,2,4)
+                plt.plot(range(rounds), test_auc)
+                plt.xlabel('number of rounds')
+                plt.ylabel('test auc')
+                plt.title('Test Area Under ROC Curve vs. Number of Rounds')
                 plt.draw()                    
-                """show is blocking, and is called after all graphs are created"""
                 plt.show()
+
             plt.clf()
-            plt.plot(range(rounds), training_error)
+            plt.plot(range(rounds), train_error)
             plt.xlabel('number of rounds')
             plt.ylabel('training error')
             plt.title('Training Error vs. Number of Rounds')
+            plt.draw()                    
             plt.savefig(filename = basepath + "training_err.png")
 
-            """5) Plot test error against number of rounds"""
+            plt.clf()
+            plt.plot(range(rounds), train_auc)
+            plt.xlabel('number of rounds')
+            plt.ylabel('training auc')
+            plt.title('Training Area Under ROC Curve vs. Number of Rounds')
+            plt.draw()                    
+            plt.savefig(filename = basepath + "training_auc.png")
+
             plt.clf()
             plt.plot(range(rounds), test_error)
             plt.xlabel('number of rounds')
-            plt.ylabel('testing error')
-            plt.title('Testing Error vs. Number of Rounds')             
-            plt.savefig(filename = basepath + "testing_err.png")
+            plt.ylabel('test error')
+            plt.title('Test Error vs. Number of Rounds')
+            plt.draw()   
+            plt.savefig(filename = basepath + "test_err.png")
+                        
+            plt.clf()
+            plt.plot(range(rounds), test_auc)
+            plt.xlabel('number of rounds')
+            plt.ylabel('test auc')
+            plt.title('Test Area Under ROC Curve vs. Number of Rounds')
+            plt.draw()   
+            plt.savefig(filename = basepath + "test_auc.png")
             plt.close()
     else:
         if xvalEN:
             """1) ROC plot based on combined validation error"""
             last_round = validation_predictions[:,-1]
-            z = zip(train_label, last_round)
-            roc = pyroc.ROCData(z)
-            roc.plot(filename = basepath+"roc.png",
-                     title='Validation Error ROC Curve',
-                     only_save = only_save)
+            z1 = zip(train_label, last_round)
+            roc = pyroc.ROCData(z1)
             print("Info : Confusion matrix for combined validation "
-                    +"error with zero threshold :")  
-            print(roc.confusion_matrix(0))                 
+                    +"error with zero threshold :")    
+            print(roc.confusion_matrix(0))    
 
-            """2) Plot training error against number of rounds"""
-            training_error = np.zeros(shape = [rounds,1] , dtype = "float32")
-            val_error = np.zeros(shape = [rounds,1] , dtype = "float32")
-            for k in range(rounds):
-                training_error[k] = sum((2*train_label-1) 
-                                        != np.sign(train_predictions[:, k])
-                                        )/np.float32(train_exam_no)
-                val_error[k] = sum((2*train_label-1) 
-                                   != np.sign(validation_predictions[:, k])
-                                   )/np.float32(train_exam_no) 
+            roc.plot(filename = basepath+"roc.png",
+                     title='Validation ROC Curve',
+                     only_save = only_save)
             
-            training_err = sum((2*train_label-1) 
-                                 != np.sign(train_predictions[:, -1])
-                                 )/np.float32(train_exam_no)
+            """3) Plot training error against number of rounds"""
             print ("Info : Training Error of the final classifier : "+ 
-                   str(training_err))
-            val_err = sum((2*train_label-1) 
-                            != np.sign(validation_predictions[:,-1])
-                            )/np.float32(train_exam_no)
+                   str(train_error[-1]))
             print ("Info : Validation Error of the final classifier : "+ 
-                   str(val_err))
+                   str(validation_error[-1]))
             
+            """Plotting using draw since it's non-blocking"""
             if not only_save:
                 plt.figure()
-                plt.subplot(1,2,1)
-                plt.plot(range(rounds), training_error)
+                plt.subplot(2,2,1)
+                plt.plot(range(rounds), train_error)
                 plt.xlabel('number of rounds')
                 plt.ylabel('training error')
                 plt.title('Training Error vs. Number of Rounds')
                 plt.draw()                    
 
-                plt.subplot(1,2,2)
-                plt.plot(range(rounds), val_error)
+                plt.subplot(2,2,2)
+                plt.plot(range(rounds), train_auc)
+                plt.xlabel('number of rounds')
+                plt.ylabel('training auc')
+                plt.title('Training Area Under ROC Curve vs. Number of Rounds')
+                plt.draw()                    
+
+                plt.subplot(2,2,3)
+                plt.plot(range(rounds), validation_error)
                 plt.xlabel('number of rounds')
                 plt.ylabel('validation error')
                 plt.title('Validation Error vs. Number of Rounds')
-                plt.draw()
+                plt.draw()   
+
+                plt.subplot(2,2,4)
+                plt.plot(range(rounds), validation_auc)
+                plt.xlabel('number of rounds')
+                plt.ylabel('validation auc')
+                plt.title('Validation Area Under ROC Curve vs. Number of Rounds')
+                plt.draw()                    
                 plt.show()
+
             plt.clf()
-            plt.plot(range(rounds), training_error)
+            plt.plot(range(rounds), train_error)
             plt.xlabel('number of rounds')
             plt.ylabel('training error')
             plt.title('Training Error vs. Number of Rounds')
+            plt.draw()                    
             plt.savefig(filename = basepath + "training_err.png")
 
-            """4) Plot test error against number of rounds"""
             plt.clf()
-            plt.plot(range(rounds), val_error)
+            plt.plot(range(rounds), train_auc)
+            plt.xlabel('number of rounds')
+            plt.ylabel('training auc')
+            plt.title('Training Area Under ROC Curve vs. Number of Rounds')
+            plt.draw()                    
+            plt.savefig(filename = basepath + "training_auc.png")
+
+            plt.clf()
+            plt.plot(range(rounds), validation_error)
             plt.xlabel('number of rounds')
             plt.ylabel('validation error')
             plt.title('Validation Error vs. Number of Rounds')
+            plt.draw()   
             plt.savefig(filename = basepath + "validation_err.png")
+
+            plt.clf()
+            plt.plot(range(rounds), validation_auc)
+            plt.xlabel('number of rounds')
+            plt.ylabel('validation auc')
+            plt.title('Validation Area Under ROC Curve vs. Number of Rounds')
+            plt.draw()                    
+            plt.savefig(filename = basepath + "validation_auc.png")
+
             plt.close()
 
         else:
-            """1) Plot training error against number of rounds"""
-            training_error = np.zeros(shape = [rounds,1] , dtype = "float32")
-            for k in range(rounds):
-                training_error[k] = sum((2*train_label-1) 
-                                        != np.sign(train_predictions[:, k])
-                                        )/np.float32(train_exam_no)
-            
-            training_err = sum((2*train_label-1) 
-                                 != np.sign(train_predictions[:, -1])
-                                 )/np.float32(train_exam_no)
             print ("Info : Training Error of the final classifier : "+ 
-                   str(training_err))
+                   str(train_error[-1]))
             
             """Plotting using draw since it's non-blocking"""
             plt.figure()
-            plt.plot(range(rounds), training_error)
+            plt.plot(range(rounds), train_error)
             plt.xlabel('number of rounds')
             plt.ylabel('training error')
             plt.title('Training Error vs. Number of Rounds')

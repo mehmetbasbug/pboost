@@ -139,6 +139,25 @@ class PBoost():
             dtype = np.dtype('u4')
         self.index_matrix = np.zeros((self.features_span,self.total_exam_no),
                                      dtype = dtype)
+    
+    def adjust_partition(self,
+                         span):
+        self.partition[1] = span
+        
+        if self.logEN and self.deduplicationEN:
+            dff = self.total_feature_no - self.partition[-1]
+            tff = self.total_feature_no
+            perc = float(dff) / tff
+            msg = "Info : %0.2f percent of features" % (perc,)
+            msg = msg + " (%i out of %i) are eliminated." % (dff,tff)
+            print datetime.now(),msg
+            
+        self.total_feature_no = self.partition[-1]
+        self.features_ind1 = 0
+        self.features_ind2 = self.partition[-1]
+        self.features_span = self.partition[-1]
+        self.feature_mapping = self.feature_mapping[0:self.features_span]
+
         
     def set_xval_indices(self,fp,ds_name='indices'):
         """
