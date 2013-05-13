@@ -280,14 +280,6 @@ class AdaBoostFastWL(WeakLearner):
             val,bout = self.single_thread(dt)
         else:
             val,bout = self.multi_thread(dt)
-        new = self.pb.comm.allreduce(val[0],None, MPI.MINLOC)
-        val = self.pb.comm.bcast(val, root=new[1])
-        bout_ba = bitarray(list(bout))
-        bout_c = bout_ba.tobytes()
-        bout_c = self.pb.comm.bcast(bout_c, root=new[1])
-        bout_ba = bitarray()
-        bout_ba.frombytes(bytes(bout_c))
-        bout = np.array(bout_ba.tolist()[0:self.pb.total_exam_no])
         (rnk, d1, d2, d3, d4, d5, c0, c1) = val[1:9]
         rnk = int(rnk)
         node.rnk = rnk
@@ -737,3 +729,34 @@ class AdaBoostFastWL(WeakLearner):
         d5 = self.pb.feature_mapping[d1]
         val = np.array([err_best,self.pb.rank, d1, d2, d3, d4, d5, c0, c1])
         return val,bout
+    
+class AdaBoostFastWLMPI(AdaBoostFastWL):
+        
+    def update_node(self,node,distribution):
+        dt = np.copy(distribution)
+        if node.mask is not None:
+            dt[node.mask] = 0.0
+        if self.pb.omp_threads==1:
+            val,bout = self.single_thread(dt)
+        else:
+            val,bout = self.multi_thread(dt)
+        new = self.pb.comm.allreduce(val[0],None, MPI.MINLOC)
+        val = self.pb.comm.bcast(val, root=new[1])
+        bout_ba = bitarray(list(bout))
+        bout_c = bout_ba.tobytes()
+        bout_c = self.pb.comm.bcast(bout_c, root=new[1])
+        bout_ba = bitarray()
+        bout_ba.frombytes(bytes(bout_c))
+        bout = np.array(bout_ba.tolist()[0:self.pb.total_exam_no])
+        (rnk, d1, d2, d3, d4, d5, c0, c1) = val[1:9]
+        rnk = int(rnk)
+        node.rnk = rnk
+        node.d1 = d1
+        node.d2 = d2
+        node.d3 = d3
+        node.d4 = d4
+        node.d5 = d5
+        node.c0 = c0
+        node.c1 = c1
+        node.set_pred(pred = bout)
+        return node

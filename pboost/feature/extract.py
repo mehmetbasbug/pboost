@@ -19,13 +19,13 @@ class Extractor():
             
         """
         self.pb = pb
-        total_feature_no = 0
+        self.total_feature_no = 0
         if pb.isLeader:
-            total_feature_no = self.produce_features()
-        pb.sync_partition(total_feature_no = total_feature_no)
-        pb.sync_xval_indices(fp = pb.train_fp, 
-                             ds_name = 'indices')
-    
+            self.produce_features()
+        self.pb.set_partition(self.total_feature_no)
+        self.pb.set_xval_indices(fp = self.pb.train_fp, 
+                                 ds_name = 'indices')
+
     def produce_features(self):
         """
         
@@ -54,8 +54,8 @@ class Extractor():
                 factory.produce(**kwargs)
                 total_feature_no = total_feature_no + factory.finalize()
         f.close()
-        return total_feature_no
-        
+        self.total_feature_no = total_feature_no
+    
     def read_features(self): 
         """
         
@@ -73,7 +73,7 @@ class Extractor():
         all_features = cursor.fetchall()
         conn.close()
         return all_features
-                
+    
     def create_io_partition(self):
         """
         

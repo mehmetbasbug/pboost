@@ -3,7 +3,7 @@ from bitarray import bitarray
 from mpi4py import MPI
 from pboost.boost.confidence_rated import ConfidenceRatedBoosting,ConfidenceRatedWL
 from pboost.boost.adaboost import AdaBoost, AdaBoostWL
-from pboost.boost.adaboost_fast import AdaBoostFast, AdaBoostFastWL
+from pboost.boost.adaboost_fast import AdaBoostFast, AdaBoostFastWL,AdaBoostFastWLMPI
 
 class Process():
     def __init__(self, pb, xval_ind, classifyEN=True):
@@ -71,6 +71,72 @@ class Process():
         elif self.pb.algorithm == 'adaboost-fast':
             boosting = AdaBoostFast(self)
             wl = AdaBoostFastWL(self)
+        else:
+            raise Exception("Unknown Boosting Algorithm")
+        
+        for r in range(self.pb.rounds):
+            tree = wl.run(dt)
+            dt = boosting.run(dt = dt,
+                              r = r,
+                              tree = tree)
+            
+        if self.isXvalMain:
+            boosting.finalize()
+        
+        """Sync the predictions and save them to a file"""
+        if self.pb.isLeader:
+            if self.pb.xvalEN and not self.isXvalMain:
+                val_predictions = boosting.get_val_predictions()
+                hypotheses = boosting.get_hypotheses()
+                np.savez(self.out_fp,
+                         val_predictions = val_predictions,
+                         hypotheses = hypotheses,
+                         )
+            if self.pb.testEN and self.isXvalMain:
+                train_predictions = boosting.get_train_predictions()
+                test_predictions = boosting.get_test_predictions()
+                hypotheses = boosting.get_hypotheses()
+                np.savez(self.out_fp,
+                         train_predictions = train_predictions,
+                         test_predictions = test_predictions,
+                         hypotheses = hypotheses,
+                         )
+            if not self.pb.testEN and self.isXvalMain:
+                train_predictions = boosting.get_train_predictions()
+                hypotheses = boosting.get_hypotheses()
+                np.savez(self.out_fp,
+                         train_predictions = train_predictions,
+                         hypotheses = hypotheses,
+                         )
+
+class ProcessMPI(Process):
+    
+    def run(self):
+        """
+        
+        Run the boosting process with given parameters.
+        
+        """
+        if self.pb.xvalEN and not self.isXvalMain:
+            dt = np.ones(self.pb.total_exam_no,
+                         dtype="float32") / self.train_exam_no
+            dt[self.val_indices] = 0.0
+        else:
+            dt = np.ones(self.pb.total_exam_no,
+                         dtype="float32") / self.pb.total_exam_no
+
+        val = np.zeros(8,dtype="float32")-1
+        boosting = None
+        wl = None
+        if self.pb.algorithm == 'conf-rated':
+            boosting = ConfidenceRatedBoosting(self)
+            wl = ConfidenceRatedWL(self)
+        elif self.pb.algorithm == 'adaboost':
+            boosting = AdaBoost(self)
+            wl = AdaBoostWL(self)
+        elif self.pb.algorithm == 'adaboost-fast':
+            boosting = AdaBoostFast(self)
+            wl = AdaBoostFastWLMPI(self)
         else:
             raise Exception("Unknown Boosting Algorithm")
         

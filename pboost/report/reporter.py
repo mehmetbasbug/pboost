@@ -231,7 +231,8 @@ class Reporter():
             self.report()
         self.dump()
         self.create_exec()
-        self.clean()
+        if not self.pb.debugEN:
+            self.clean()
 
 def plot_data(working_dir = None,
               alg = None, 

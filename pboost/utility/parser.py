@@ -28,6 +28,7 @@ def get_configuration(conf_num, conf_path = "./configurations.cfg"):
                         'deduplication','omp_threads','tree_depth'
                         )
     my_dict = dict()
+    my_dict['conf_num'] = int(conf_num)
     arbitrary = dict()
     for option in options:
         try:
