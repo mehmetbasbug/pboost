@@ -6,11 +6,11 @@ from bitarray import bitarray
 from mpi4py import MPI
 from pboost.boost.decision_tree import Node,Tree
 
-class ConfidenceRated(Boosting):
+class RankBoost(Boosting):
     def __init__(self, boosting_p):
         """
         
-        ConfidenceRated Implementation
+        RankBoost Implementation
         
         Parameters
         ----------
@@ -45,7 +45,16 @@ class ConfidenceRated(Boosting):
         """Convert binary labesl to +1/-1 form"""
         self.tl = np.int16(np.copy(self.process.label))
         self.tl[self.process.label == 0] = -1
+        self.f = np.zeros(self.pb.total_exam_no,dtype = 'float32')
         
+        if self.pb.xvalEN and not self.process.isXvalMain:
+            self.pos = np.logical_and(self.process.label,
+                                      np.logical_not(self.process.val_indices))
+            self.neg = np.logical_and(np.logical_not(self.process.label),
+                                      np.logical_not(self.process.val_indices))
+        else:
+            self.pos = self.process.label
+            self.neg = np.logical_not(self.process.label)
 
     def run(self, dt, r, tree):
         """
@@ -118,10 +127,20 @@ class ConfidenceRated(Boosting):
         
         """Update distribution over the examples"""
         nbout = np.logical_not(bout)
-        dt[bout] = dt[bout] * np.exp(-self.tl[bout] * np.float32(c0))
-        dt[nbout] = dt[nbout] * np.exp(-self.tl[nbout]  * np.float32(c1))
-
-        return dt / np.sum(dt)
+        if self.pb.xvalEN and not self.process.isXvalMain:
+            bout = np.logical_and(bout,
+                                  np.logical_not(self.process.val_indices))
+            nbout = np.logical_and(nbout,
+                                   np.logical_not(self.process.val_indices))
+        
+        zp = 2 * np.sum(np.exp(-self.f[self.pos]))
+        zn = 2 * np.sum(np.exp(self.f[self.neg]))
+        dt[self.pos] = np.exp(-self.f[self.pos]) / zp
+        dt[self.neg] = np.exp(self.f[self.neg]) / zn
+#         dt = dt / np.sum(dt)
+        self.f[bout] = self.f[bout] + 0.5*np.float32(c0)
+        self.f[nbout] = self.f[nbout] + 0.5*np.float32(c1)
+        return dt
     
     def finalize(self):
         """
@@ -196,12 +215,12 @@ class ConfidenceRated(Boosting):
         """
         return self.test_predictions
             
-class ConfidenceRatedWL(WeakLearner):
+class RankBoostWL(WeakLearner):
     
     def __init__(self, boosting_p):
         """
         
-        Decision Stump Implementation compatible with ConfidenceRated
+        Decision Stump Implementation compatible with RankBoost
         
         Parameters
         ----------
@@ -293,147 +312,6 @@ class ConfidenceRatedWL(WeakLearner):
         node.set_pred(pred = bout)
         return node
 
-    def multi_thread(self,dt):
-        label = self.__label
-        index = self.__index
-        F = index.shape[0]/4*4
-        N = index.shape[1]
-        cpus = self.pb.omp_threads
-        code = """
-               omp_set_num_threads(cpus);
-               float err_best = 1000.0;
-               int d1 = -1;
-               int d2 = -1;
-               int d3 = -1;
-               int d4 = -1;           
-               float wlp_best = 0.0;
-               float wln_best = 0.0;
-               float wrn_best = 0.0;
-               float wrp_best = 0.0;           
-               
-               #pragma omp parallel
-               {
-                   int d1_thread = -1;
-                   int d2_thread = -1;
-                   float wlrn = 0.0;
-                   float wlrp = 0.0;
-                   float wln = 0.0;
-                   float wlp = 0.0;
-                   float wrn = 0.0;
-                   float wrp = 0.0;
-                   float e = 0.0;
-                   float err_thread_best = 1000.0;
-                   float wlp_thread_best = 0.0;
-                   float wln_thread_best = 0.0;
-                   float wrn_thread_best = 0.0;
-                   float wrp_thread_best = 0.0;
-                   float dtp[N];
-                   bool labelp[N]; 
-                   for (int j=0; j<N; ++j){
-                       dtp[j] = dt(j);
-                       labelp[j] = label(j);
-                       if (label(j) == 1){
-                           wlrp = wlrp + dt(j);
-                       }
-                       else{
-                           wlrn = wlrn + dt(j);
-                       }
-                   }
-                   int ii = 0;
-                   
-                   #pragma omp for nowait 
-                   for (int k=0; k<F; ++k ){
-                       wln = 0.0;
-                       wlp = 0.0;
-                       wrp = wlrp;
-                       wrn = wlrn;
-                       for (int j=0; j<N; ++j ){
-                           ii = index(k,j);
-                           if (labelp[ii] == 1){
-                                wrp = wrp - dtp[ii];
-                                wlp = wlp + dtp[ii];
-                           }
-                           else{
-                                wrn = wrn - dtp[ii];
-                                wln = wln + dtp[ii];
-                           }
-                           e = sqrt(wlp*wln)+sqrt(wrp*wrn);
-                           if (e < err_thread_best){
-                               err_thread_best = e;
-                               d1_thread = k;
-                               d2_thread = j;
-                               wlp_thread_best = wlp;
-                               wln_thread_best = wln;
-                               wrp_thread_best = wrp;
-                               wrn_thread_best = wrn;
-                           }
-                       }
-                   }           
-                   #pragma omp critical
-                   {
-                        if (err_thread_best < err_best){
-                            err_best = err_thread_best;
-                            d1 = d1_thread;
-                            d2 = d2_thread;
-                            wlp_best = wlp_thread_best;
-                            wln_best = wln_thread_best;
-                            wrp_best = wrp_thread_best;
-                            wrn_best = wrn_thread_best;
-                        }           
-                   } 
-               }    
-               d3 = index(d1,d2);
-               d4 = d3;
-               
-               float eps = 0.001 / N;
-               if (err_best < eps){
-                   err_best = eps;
-               }
-               float c0 = 0.0;
-               float c1 = 0.0;
-               float err_best_n = 1.0 - err_best;
-               float alpha = 0.5 * std::log((err_best_n) / err_best);
-               c0 = 0.5 * std::log((wlp_best + eps)/(wln_best + eps));
-               c1 = 0.5 * std::log((wrp_best + eps)/(wrn_best + eps));
-               py::tuple results(7);
-               results[0] = err_best;
-               results[1] = d1;
-               results[2] = d2;
-               results[3] = d3;
-               results[4] = d4;
-               results[5] = c0;
-               results[6] = c1;
-    
-               return_val = results;
-               """
-        rtrn = weave.inline(code,
-                            ['dt','label','index', 'N', 'F','cpus'],
-                            type_converters = weave.converters.blitz,
-                            compiler = 'gcc',
-                            extra_compile_args = [
-                            "-fopenmp",
-                            "-pthread",
-                            "-O6",
-                            "-funroll-all-loops",
-                            "-fomit-frame-pointer",
-                            "-msse2",
-                            "-ftree-vectorize",
-                            "-ffast-math",
-                            "-funroll-loops",
-                            "-ftracer",
-                            ],
-                            extra_link_args = ['-lgomp'],
-                            headers = ['<cmath>','<emmintrin.h>','<omp.h>','<stdio.h>'])
-        (err_best,d1,d2,d3,d4,c0,c1) = rtrn
-        d1 = int(d1)
-        d2 = int(d2)
-        d3 = int(d3)
-        d4 = int(d4)
-        bout = np.zeros(N,dtype="bool")
-        bout[index[d1,0:d2+1]] = True
-        d5 = self.pb.feature_mapping[d1]
-        val = np.array([err_best,self.pb.rank, d1, d2, d3, d4, d5, c0, c1])
-        return val,bout
     
     def single_thread(self,dt):
 #         dt = np.copy(dt)
@@ -442,6 +320,7 @@ class ConfidenceRatedWL(WeakLearner):
         F = index.shape[0]/4*4
         N = index.shape[1]
         code = """
+               #include <cmath>
                float e = 0.0;
                float err_best = 1000.0;
                int d1 = -1;
@@ -510,8 +389,20 @@ class ConfidenceRatedWL(WeakLearner):
                float c1 = 0.0;
                float err_best_n = 1.0 - err_best;
                float alpha = 0.5 * std::log((err_best_n) / err_best);
-               c0 = 0.5 * std::log((wlp_best + eps)/(wln_best + eps));
-               c1 = 0.5 * std::log((wrp_best + eps)/(wrn_best + eps));
+               if (wln_best < wlp_best){
+                    c0 = alpha;
+               }
+               else{
+                    c0 = -alpha;
+               }
+                
+               if (wrn_best < wrp_best){
+                    c1 = alpha;
+               }
+               else{
+                    c1 = -alpha;
+               }
+               
                py::tuple results(7);
                results[0] = err_best;
                results[1] = d1;
@@ -523,12 +414,12 @@ class ConfidenceRatedWL(WeakLearner):
     
                return_val = results;
                """
+        
         rtrn = weave.inline(code,
                             ['dt','label','index', 'N', 'F'],
                             type_converters = weave.converters.blitz,
                             compiler = 'gcc',
-                            extra_compile_args = ['-O3','-ffast-math'],
-                            headers = ['<cmath>',])
+                            extra_compile_args = ['-O3','-ffast-math'])
         (err_best,d1,d2,d3,d4,c0,c1) = rtrn
         d1 = int(d1)
         d2 = int(d2)
@@ -540,7 +431,7 @@ class ConfidenceRatedWL(WeakLearner):
         val = np.array([err_best,self.pb.rank, d1, d2, d3, d4, d5, c0, c1])
         return val,bout
     
-class ConfidenceRatedWLMPI(ConfidenceRatedWL):
+class RankBoostWLMPI(RankBoostWL):
         
     def update_node(self,node,distribution):
         dt = np.copy(distribution)

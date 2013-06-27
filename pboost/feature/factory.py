@@ -2,7 +2,7 @@ import ujson, inspect, os, sqlite3
 
 class BaseFeatureFactory(object):
     def __init__(self,data,db_path=None):
-        self.data = data[:,:]
+        self.data = data[...]
         self.cls_path = str(os.path.realpath(inspect.getfile(self.__class__)))
         self.cls_name = str(self.__class__.__name__)
         if db_path:

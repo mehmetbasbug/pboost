@@ -1,9 +1,10 @@
 import numpy as np
 from bitarray import bitarray
 from mpi4py import MPI
-from pboost.boost.confidence_rated import ConfidenceRatedBoosting,ConfidenceRatedWL
+from pboost.boost.confidence_rated import ConfidenceRated,ConfidenceRatedWL
 from pboost.boost.adaboost import AdaBoost, AdaBoostWL
 from pboost.boost.adaboost_fast import AdaBoostFast, AdaBoostFastWL,AdaBoostFastWLMPI
+from pboost.boost.rankboost import RankBoost
 
 class Process():
     def __init__(self, pb, xval_ind, classifyEN=True):
@@ -63,13 +64,19 @@ class Process():
         boosting = None
         wl = None
         if self.pb.algorithm == 'conf-rated':
-            boosting = ConfidenceRatedBoosting(self)
+            boosting = ConfidenceRated(self)
             wl = ConfidenceRatedWL(self)
         elif self.pb.algorithm == 'adaboost':
             boosting = AdaBoost(self)
             wl = AdaBoostWL(self)
         elif self.pb.algorithm == 'adaboost-fast':
             boosting = AdaBoostFast(self)
+            wl = AdaBoostFastWL(self)
+        elif self.pb.algorithm == 'rankboost':
+            boosting = RankBoost(self)
+            wl = ConfidenceRatedWL(self)
+        elif self.pb.algorithm == 'rankboost-fast':
+            boosting = RankBoost(self)
             wl = AdaBoostFastWL(self)
         else:
             raise Exception("Unknown Boosting Algorithm")
@@ -129,7 +136,7 @@ class ProcessMPI(Process):
         boosting = None
         wl = None
         if self.pb.algorithm == 'conf-rated':
-            boosting = ConfidenceRatedBoosting(self)
+            boosting = ConfidenceRated(self)
             wl = ConfidenceRatedWL(self)
         elif self.pb.algorithm == 'adaboost':
             boosting = AdaBoost(self)
@@ -137,6 +144,12 @@ class ProcessMPI(Process):
         elif self.pb.algorithm == 'adaboost-fast':
             boosting = AdaBoostFast(self)
             wl = AdaBoostFastWLMPI(self)
+        elif self.pb.algorithm == 'rankboost':
+            boosting = RankBoost(self)
+            wl = ConfidenceRatedWL(self)
+        elif self.pb.algorithm == 'rankboost-fast':
+            boosting = RankBoost(self)
+            wl = AdaBoostFastWL(self)
         else:
             raise Exception("Unknown Boosting Algorithm")
         
