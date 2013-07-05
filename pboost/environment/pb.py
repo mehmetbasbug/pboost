@@ -235,10 +235,10 @@ class PBoost():
             raise Exception('Error : Unknown source. Should give train'+ 
                             ' or test as source')
         try:
-            label = f["label"][:]
+            label = np.int16(f["label"][:])
         except KeyError:
             print "Warning : The train label does not exist.Using last column."
-            label = f['data'][:,-1]
+            label = np.int16(f['data'][:,-1])
             pass
         f.close()
         return label

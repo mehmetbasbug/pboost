@@ -53,7 +53,7 @@ class RankBoost(Boosting):
             self.neg = np.logical_and(np.logical_not(self.process.label),
                                       np.logical_not(self.process.val_indices))
         else:
-            self.pos = self.process.label
+            self.pos = np.logical_not(np.logical_not(self.process.label))
             self.neg = np.logical_not(self.process.label)
 
     def run(self, dt, r, tree):
