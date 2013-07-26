@@ -143,6 +143,20 @@ class Reporter():
                          self.pb.xvalEN]) 
         if self.pb.testEN:
             if self.pb.xvalEN:
+                xval_val_auc = np.zeros(self.pb.xval_no)
+                xval_val_auc_std_dev = np.zeros(self.pb.xval_no)
+                val_auc_mean = 0.0
+                val_auc_std = 0.0                
+                for xval in np.arange(1,self.pb.xval_no+1):
+                    s = self.pb.xval_indices==xval
+                    vp = self.validation_predictions[s,-1]
+                    lbl = self.train_label[s]
+                    z = zip(lbl,vp)
+                    roc = pyroc.ROCData(z)
+                    xval_val_auc[xval-1] = roc.auc()
+                    xval_val_auc_std_dev[xval-1] = roc.calculateStandardError()
+                val_auc_mean = np.mean(xval_val_auc)
+                val_auc_std = np.mean(xval_val_auc_std_dev)
                 np.savez(dump_filename,
                          meta = meta,
                          train_predictions = self.train_predictions,
@@ -156,6 +170,10 @@ class Reporter():
                          validation_predictions = self.validation_predictions,
                          validation_error = self.validation_error,
                          validation_auc = self.validation_auc,
+                         val_auc_mean = val_auc_mean,
+                         val_auc_std = val_auc_std,
+                         xval_val_auc = xval_val_auc,
+                         xval_val_auc_std_dev = xval_val_auc_std_dev,
                          xval_indices = self.pb.xval_indices)
             else:
                 np.savez(dump_filename,
@@ -171,6 +189,20 @@ class Reporter():
                          )
         else:
             if self.pb.xvalEN:
+                xval_val_auc = np.zeros(self.pb.xval_no)
+                xval_val_auc_std_dev = np.zeros(self.pb.xval_no)
+                val_auc_mean = 0.0
+                val_auc_std = 0.0                
+                for xval in np.arange(1,self.pb.xval_no+1):
+                    s = self.pb.xval_indices==xval
+                    vp = self.validation_predictions[s,-1]
+                    lbl = self.train_label[s]
+                    z = zip(lbl,vp)
+                    roc = pyroc.ROCData(z)
+                    xval_val_auc[xval-1] = roc.auc()
+                    xval_val_auc_std_dev[xval-1] = roc.calculateStandardError()
+                val_auc_mean = np.mean(xval_val_auc)
+                val_auc_std = np.mean(xval_val_auc_std_dev)
                 np.savez(dump_filename,
                          meta = meta,
                          train_predictions = self.train_predictions,
@@ -180,6 +212,10 @@ class Reporter():
                          validation_predictions = self.validation_predictions,
                          validation_error = self.validation_error,
                          validation_auc = self.validation_auc,
+                         val_auc_mean = val_auc_mean,
+                         val_auc_std = val_auc_std,
+                         xval_val_auc = xval_val_auc,
+                         xval_val_auc_std_dev = xval_val_auc_std_dev,
                          xval_indices = self.pb.xval_indices)                
             else:
                 np.savez(dump_filename,
@@ -358,8 +394,9 @@ def plot_data(working_dir = None,
             roc1 = pyroc.ROCData(z1)
             print("Info : Confusion matrix for combined validation "
                     +"error with zero threshold :")    
-            print(roc1.confusion_matrix(0))    
+            print(roc1.confusion_matrix(0))
 
+            
             """2) ROC plot based on testing error"""
             last_round = test_predictions[:,-1]
             z2 = zip(test_label, last_round)
