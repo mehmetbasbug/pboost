@@ -243,6 +243,23 @@ class PBoost():
         f.close()
         return label
     
+    def clean(self):
+        if self.xvalEN:
+            jobs = np.arange(self.xval_no+1)
+        else:
+            jobs = (0,)
+        files_to_del = []
+        files_to_del.append(self.model_fp)
+        files_to_del.append(self.feature_db)
+        for job in jobs:
+            files_to_del.append(self.wd + "out_" + str(self.conf_num) + 
+                                "_" + str(job) + ".npz")
+        for fp in files_to_del:
+            try:
+                os.remove(fp)                
+            except OSError:
+                pass
+    
     def run(self):
         """
         
@@ -256,21 +273,7 @@ class PBoost():
             print datetime.now(),msg
         
         if self.isLeader:
-            """
-            This part is only to make sure that all existing intermediate 
-            files are deleted before run. Should be removed after debugging.
-            """
-            for filename in glob.glob(self.wd + '*.npz'):
-                os.remove(filename)
-    
-            for filename in glob.glob(self.wd + '*.npy'):
-                os.remove(filename)
-    
-            for filename in glob.glob(self.wd + '*.h5'):
-                os.remove(filename)
-                
-            for filename in glob.glob(self.wd + '*.db'):
-                os.remove(filename)
+            self.clean()
         
         """Extract features"""
         extractor = Extractor(pb=self)
@@ -286,12 +289,12 @@ class PBoost():
         if self.logEN:
             msg = "Info : Partition of feature space is  "+str(self.partition)
             print datetime.now(),msg
-        
+
         if self.xvalEN:
             jobs = np.arange(self.xval_no+1)
         else:
-            jobs = (0,)
-    
+            jobs = (0,)        
+
         """Run boosting for each xval index"""
         for xval_ind in jobs:        
             boost_process = Process(pb = self,
@@ -318,6 +321,9 @@ class PBoost():
                 print datetime.now(),msg
     
             reporter.run()
+            if not self.debugEN:
+                self.clean()
+            
             if self.logEN:
                 msg = "Info : Reporter finished running."
                 print datetime.now(),msg
@@ -325,6 +331,7 @@ class PBoost():
                 delta = tfinish - tstart
                 msg = "Info : Total runtime : %0.2f seconds" % (delta,)
                 print datetime.now(),msg
+            
     
 class PBoostMPI(PBoost):
     def __init__(self, 
@@ -536,21 +543,7 @@ class PBoostMPI(PBoost):
             print datetime.now(),"Rank",self.rank,msg
         
         if self.isLeader:
-            """
-            This part is only to make sure that all existing intermediate 
-            files are deleted before run. Should be removed after debugging.
-            """
-            for filename in glob.glob(self.wd + '*.npz'):
-                os.remove(filename)
-    
-            for filename in glob.glob(self.wd + '*.npy'):
-                os.remove(filename)
-    
-            for filename in glob.glob(self.wd + '*.h5'):
-                os.remove(filename)
-                
-            for filename in glob.glob(self.wd + '*.db'):
-                os.remove(filename)
+            self.clean()
         
         """Extract features"""
         extractor = Extractor(pb=self)
@@ -601,6 +594,9 @@ class PBoostMPI(PBoost):
                 print datetime.now(),"Rank",self.rank,msg
     
             reporter.run()
+            if not self.debugEN:
+                self.clean()
+            
             if self.logEN:
                 msg = "Info : Reporter finished running."
                 print datetime.now(),"Rank",self.rank,msg

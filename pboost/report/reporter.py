@@ -281,23 +281,6 @@ class Reporter():
         shutil.copyfile(os.path.abspath(final_classifier_script.__file__).replace('.pyc','.py'),
                         final_classifier_path)
 
-    def clean(self):
-        """ 
-        Clean up unncessary intermediate files from working directory 
-        to avoid polluting disk 
-        """
-        for filename in glob.glob(self.pb.wd+'*.npz'):
-            os.remove(filename)
-
-        for filename in glob.glob(self.pb.wd+'*.npy'):
-            os.remove(filename)
-
-        for filename in glob.glob(self.pb.wd+'*.h5'):
-            os.remove(filename)
-            
-        for filename in glob.glob(self.pb.wd+'*.db'):
-            os.remove(filename)
-
     def run(self):
         if self.pb.show_plots == 'y':
             self.plot()
@@ -305,8 +288,6 @@ class Reporter():
             self.report()
         self.dump()
         self.create_exec()
-        if not self.pb.debugEN:
-            self.clean()
 
 def plot_data(working_dir = None,
               alg = None, 
@@ -363,7 +344,9 @@ def plot_data(working_dir = None,
             validation_error = f['validation_error']
             validation_auc = f['validation_auc']
         if not basepath:
-            basepath = os.path.realpath("./")
+            filepath = os.path.realpath(os.path.expanduser(filename))
+            head,tail = os.path.split(filepath)
+            basepath = head + '/'
     elif not basepath:
         basepath = working_dir
             
