@@ -256,7 +256,7 @@ class PBoost():
                                 "_" + str(job) + ".npz")
         for fp in files_to_del:
             try:
-                os.remove(fp)                
+                os.remove(fp)
             except OSError:
                 pass
     
@@ -529,6 +529,25 @@ class PBoostMPI(PBoost):
             dtype = np.dtype('u4')
         self.index_matrix = np.zeros((self.features_span,self.total_exam_no),
                                      dtype = dtype)
+    
+    def clean(self):
+        if self.xvalEN:
+            jobs = np.arange(self.xval_no+1)
+        else:
+            jobs = (0,)
+        files_to_del = []
+        for rnk in np.arange(self.comm_size):
+            model_fp = self.wd + "model_%s_%s.h5" % (self.conf_num,rnk)
+            files_to_del.append(model_fp)
+        files_to_del.append(self.feature_db)
+        for job in jobs:
+            files_to_del.append(self.wd + "out_" + str(self.conf_num) + 
+                                "_" + str(job) + ".npz")
+        for fp in files_to_del:
+            try:
+                os.remove(fp)
+            except OSError:
+                pass
     
     def run(self):
         """

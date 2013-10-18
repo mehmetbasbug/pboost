@@ -1,5 +1,5 @@
 *******************************************************************************
-PBOOST : Parallel Implementation of Boosting Algorithms with MPI
+PBOOST : Hybrid Parallel Implementation of Boosted Trees
 
 Mehmet Basbug
 PhD Candidate
@@ -58,7 +58,7 @@ The recommended way is appending your new configurations to configurations.cfg f
 #                 Raw file of examples and their attributes for testing
 #                 (Optional)
 
-Data files (train_file and test_file) should be in HDF5 format with raw data dataset must be named 'data' and label must be named 'label'. Alternatively one can use the last column of 'data' dataset as the label. 
+Data files (train_file and test_file) should be in HDF5 format and the raw data must be named 'data' and label must be named 'label'. Alternatively one can use the last column of 'data' dataset as the label. 
 
 If a separate 'label' dataset is not given, the program will assume the last column as labels. At this point only binary labeling is supported; therefore, all the labels should be zero or one.
 
@@ -86,10 +86,10 @@ Working directory should be on a shared disk space. Data files and feature facto
 
 # algorithm 	= [string] 
 #                 Boosting algorithm to use. 
-#                 Current options are "conf-rated" and "adaboost"
+#                 Current options are "conf-rated", "adaboost" and "adaboost-fast"
 #                 (Leaving blank will set this field to "conf-rated")
 
-Currently only "Adaboost" and "Confidence Rated Boosting" are supported. The second one is recommended as it is likely to converge faster.
+Currently only "adaboost", "adaboost-fast" and "conf-rated" are supported. The second one is recommended as it is likely to converge faster.
 
 # rounds 		= [integer]
 #                 Number of rounds that the boosting algorithm should iterate for 
@@ -113,8 +113,25 @@ Since MPI does not treat differently to cores on the same node, this option shou
 #                 Enable to show the plots before the program terminates
 #                 (Leaving blank will set this field to y)
 
+In both cases plots will be saved in the output directory
 
-All the necessary data is always stored in output folder and plots can be generated later on.
+# deduplication = [y/n]
+#				  Enable deduplication for extracted features 
+#			      (Leaving blank will set this field to n)
+
+# omp_threads   = [integer]
+#				  Number of OMP threads per MPI process. Only available for adaboost-fast 
+#			      (Leaving blank will set this field to 1)
+
+The recommended parallelization is to set omp_thread to the number of cores in each node and create mpi threads per node with -bynode flag of mpirun
+
+# tree_depth    = [integer]
+#				  The height of the decision tree 
+#			      (Leaving blank will set this field to 1)
+
+Fixed height decision tree is used as weak learner. Height of 1 corresponds to Decision Stumps. The type of boosting algorithm determines which objection function is minimized when a node is created. 
+
+All the necessary output data is always stored in an output folder and plots can be generated later on.
 
 D. RUNNING YOUR PROGRAM
 -------------------------------------------------------------------------------
@@ -124,7 +141,7 @@ run.py takes two arguments cp and cn
   
 A typical command to run pboost looks like 
  
-mpirun -np NUMBER_OF_PROCESSORS python run.py -cp CONF_PATH CONF_NUM_1 CONF_NUM2
+mpirun -np NUMBER_OF_MPI_THREADS python run.py -cp CONF_PATH CONF_NUM_1 CONF_NUM2
 
 The default setting for cp is '~/pboost/configurations.cfg'
 
@@ -136,3 +153,17 @@ hypotheses.npy : Data file containing hypotheses found by pboost
 dump.npz : Data file containing predictions and other information about the job
 
 One can generate plots using plot.py and giving dump.npz as input to that script
+
+E. SUBMITTING A PBOOST JOB VIA PBS
+-------------------------------------------------------------------------------
+The following script is an example of how to submit a pboost job using PBS scheduler. The script allocates 4 nodes and 16 cores per node for the job for 24 hours. Pboost will run experiments 1 to 100(included) as described in the configuration file experiments.cfg
+
+	#!/bin/bash
+	#PBS -l nodes=4:ppn=16,walltime=24:00:00
+
+	module load openmpi
+	module load hdf5
+	cd /home/mbasbug/pboost
+	mpirun -np 4 -bynode python2.7 run.py -cp ./experiments.cfg 1-100
+
+Notice that the number of omp threads is set in the configuration file 
