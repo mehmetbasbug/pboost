@@ -48,8 +48,8 @@ class Extractor():
             ff = itr.get_next()
             factory_manager_classes = ff.get_classes()
             for factory_man_cls in factory_manager_classes:
-                factory_manager = factory_man_cls(data_handler = traindata,
-                                          db_path = self.pb.feature_db)
+                factory_manager = factory_man_cls(data_handle = traindata,
+                                                  db_path = self.pb.feature_db)
                 kwargs = self.pb.conf_dict['arbitrary']
                 factory_manager.produce(**kwargs)
                 total_feature_no = total_feature_no + factory_manager.finalize()

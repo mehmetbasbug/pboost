@@ -1,8 +1,8 @@
 import ujson, inspect, os, sqlite3
 
 class BaseFeatureFactoryManager(object):
-    def __init__(self,data_handler,db_path):
-        self.data_handler = data_handler
+    def __init__(self,data_handle,db_path):
+        self.data_handle = data_handle
         self.cls_path = str(os.path.realpath(inspect.getfile(self.__class__)))
         self.cls_name = str(self.__class__.__name__)
         self.db_path = db_path
