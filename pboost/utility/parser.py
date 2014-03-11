@@ -29,12 +29,15 @@ def get_configuration(conf_num, conf_path = "./configurations.cfg"):
                         )
     my_dict = dict()
     my_dict['conf_num'] = int(conf_num)
+    my_dict['example_dim'] = 0
     arbitrary = dict()
     for option in options:
         try:
             if option == 'working_dir': 
                 my_dict['working_dir'] = os.path.realpath(
                 os.path.expanduser(str(config.get(section,"working_dir")).strip()))
+            elif option == 'example_dim':
+                my_dict['example_dim'] = config.get(section, 'example_dim')
             elif option in required_options:
                 my_dict[option] = config.get(section, option)
             else:
@@ -84,9 +87,6 @@ def get_configuration(conf_num, conf_path = "./configurations.cfg"):
 
     if my_dict['tree_depth'] == None:
         my_dict['tree_depth'] = 1
-
-    if my_dict['example_dim'] == None:
-        my_dict['example_dim'] = 0
         
     if my_dict['omp_threads'] != None:
         try:
