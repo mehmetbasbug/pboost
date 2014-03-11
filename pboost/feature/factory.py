@@ -19,7 +19,7 @@ class BaseFeatureFactoryManager(object):
         DO NOT OVERRIDE THIS METHOD
         """
         argstr = ujson.dumps(args)
-        self.entries.append([self.cls_path,self.cls_name,argstr])
+        self.entries.append([self.cls_path,self.cls_name[:-7],argstr])
     
     def finalize(self):
         self.cursor.executemany('INSERT INTO features VALUES (?,?,?)', self.entries)
