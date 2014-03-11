@@ -34,9 +34,9 @@ class BaseFeatureFactory(object):
         self.cls_path = str(os.path.realpath(inspect.getfile(self.__class__)))
         self.cls_name = str(self.__class__.__name__)
     
-    def load_data(self,data_handler,*args):
+    def load_data(self,data_handle,**kwargs):
         ''' This method can be customized wrt memory req '''
-        self.data = data_handler[...]
+        self.data = data_handle[...]
 
     def blueprint(self, *args):
         raise NotImplementedError("Error : "+

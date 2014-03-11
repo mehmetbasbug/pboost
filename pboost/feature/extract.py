@@ -168,10 +168,11 @@ class Extractor():
                     current_fp = fp
                     current_cls = cls
                     feature = Feature(feature_def = feature_def)
-                    feature.fc.load_data(data_handler = traindata)
+                    kwargs = self.pb.conf_dict['arbitrary']
+                    feature.fc.load_data(data_handle = traindata,**kwargs)
                     if self.pb.testEN:
                         test_feature = Feature(feature_def = feature_def)
-                        test_feature.fc.load_data(data_handler = testdata)
+                        test_feature.fc.load_data(data_handle = testdata,**kwargs)
                 train_vals = feature.apply(params = params)
                 ind = np.argsort(train_vals)
                 is_valid = True
