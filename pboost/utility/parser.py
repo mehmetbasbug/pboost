@@ -84,6 +84,9 @@ def get_configuration(conf_num, conf_path = "./configurations.cfg"):
 
     if my_dict['tree_depth'] == None:
         my_dict['tree_depth'] = 1
+
+    if my_dict['example_dim'] == None:
+        my_dict['example_dim'] = 0
         
     if my_dict['omp_threads'] != None:
         try:

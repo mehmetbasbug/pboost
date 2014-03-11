@@ -86,6 +86,7 @@ class PBoost():
         self.deduplication = self.conf_dict['deduplication']
         self.omp_threads = self.conf_dict['omp_threads']
         self.depth = self.conf_dict['tree_depth']
+        self.example_dim = self.conf_dict['example_dim']
         
         self.isLeader = True
         self.logEN = logEN
@@ -210,7 +211,7 @@ class PBoost():
         """
         f = h5py.File(fp,'r')
         ds = f[ds_name]
-        exam_no = ds.shape[0]
+        exam_no = ds.shape[self.example_dim]
         f.close()
         return exam_no
     

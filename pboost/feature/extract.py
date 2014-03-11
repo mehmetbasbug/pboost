@@ -2,7 +2,7 @@ import sys,ujson,os,h5py,sqlite3
 import numpy as np
 import inspect
 # import pybloomfilter
-from pboost.feature.factory import BaseFeatureFactory
+from pboost.feature.factory import BaseFeatureFactoryManager
 from bitarray import bitarray
 
 class Extractor():
@@ -46,13 +46,13 @@ class Extractor():
         itr = FactoryFileIterator(self.pb.factory_files)
         while(itr.has_next()):
             ff = itr.get_next()
-            factory_classes = ff.get_classes()
-            for factory_cls in factory_classes:
-                factory = factory_cls(data = traindata,
-                                      db_path = self.pb.feature_db)
+            factory_manager_classes = ff.get_classes()
+            for factory_man_cls in factory_manager_classes:
+                factory_manager = factory_man_cls(data_handler = traindata,
+                                          db_path = self.pb.feature_db)
                 kwargs = self.pb.conf_dict['arbitrary']
-                factory.produce(**kwargs)
-                total_feature_no = total_feature_no + factory.finalize()
+                factory_manager.produce(**kwargs)
+                total_feature_no = total_feature_no + factory_manager.finalize()
         f.close()
         self.total_feature_no = total_feature_no
     
@@ -123,16 +123,16 @@ class Extractor():
         """Create model file and necessary datasets"""
         model_file = h5py.File(self.pb.model_fp,'w')
         io_index = model_file.create_dataset("index",
-                                  self.pb.index_matrix.shape,
-                                  self.pb.index_matrix.dtype)
+                                             self.pb.index_matrix.shape,
+                                             self.pb.index_matrix.dtype)
         io_train = model_file.create_dataset("train_unsorted",
-                                  self.pb.index_matrix.shape,
-                                  "float32")
+                                             self.pb.index_matrix.shape,
+                                             "float32")
         if self.pb.testEN:
             io_test = model_file.create_dataset("test_unsorted",
-                                      (self.pb.features_span,
-                                       self.pb.test_exam_no),
-                                       "float32")  
+                                                (self.pb.features_span,
+                                                 self.pb.test_exam_no),
+                                                "float32")  
 
         """Read training and testing data"""
         train_file = h5py.File(self.pb.train_fp,'r')
@@ -152,12 +152,12 @@ class Extractor():
             io_next = io_partition[io_ind+1]
             feature_chunk = all_features[io_current:io_next]
             index_chunk = np.zeros((io_next-io_current,self.pb.total_exam_no),
-                               dtype = self.pb.index_matrix.dtype)
+                                   dtype = self.pb.index_matrix.dtype)
             train_chunk = np.zeros((io_next-io_current,self.pb.total_exam_no),
-                               dtype = "float32") 
+                                   dtype = "float32") 
             if self.pb.testEN:
                 test_chunk = np.zeros((io_next-io_current,self.pb.test_exam_no),
-                                    dtype = "float32")
+                                      dtype = "float32")
             feature_ind = 0
             for f_idx,feature_def in enumerate(feature_chunk):
                 fp = feature_def[0]
@@ -167,11 +167,11 @@ class Extractor():
                 if fp != current_fp or cls != current_cls:
                     current_fp = fp
                     current_cls = cls
-                    feature = Feature(feature_def = feature_def,
-                                      data = traindata)
+                    feature = Feature(feature_def = feature_def)
+                    feature.fc.load_data(data_handler = traindata)
                     if self.pb.testEN:
-                        test_feature = Feature(feature_def = feature_def,
-                                               data = testdata)
+                        test_feature = Feature(feature_def = feature_def)
+                        test_feature.fc.load_data(data_handler = testdata)
                 train_vals = feature.apply(params = params)
                 ind = np.argsort(train_vals)
                 is_valid = True
@@ -310,7 +310,6 @@ class MapFilter():
         
 class Feature():
     def __init__(self,
-                 data,
                  filepath = None,
                  cls_name = None,
                  feature_def = None,
@@ -345,8 +344,8 @@ class Feature():
         root,ext =  os.path.splitext(tail)
         m = __import__(root)
         feat_cls = getattr(m,self.cls_name)
-        self.fc =  feat_cls(data)
-    
+        self.fc =  feat_cls()
+        
     def apply(self,params):
         """
 
@@ -364,8 +363,8 @@ class Feature():
 
 class FactoryFile():
     def __init__(self,
-                 factory_class_names = None,
-                 factory_classes = None,
+                 factory_manager_class_names = None,
+                 factory_manager_classes = None,
                  fp = None):
         """
 
@@ -374,22 +373,22 @@ class FactoryFile():
         Parameters
         ----------
 
-        factory_class_names : List of Strings, optional
+        factory_manager_class_names : List of Strings, optional
             names of classes in the file
-        factory_classes : List of pboost.feature.factory.BaseFactoryFile 
+        factory_manager_classes : List of pboost.feature.factory.BaseFeatureFactoryManager 
                           objects, optional
             classes in the file
         fp : String, optional
             Filepath to the factory file
             
         """
-        self.factory_class_names = list()
-        self.factory_classes = list()
+        self.factory_manager_class_names = list()
+        self.factory_manager_classes = list()
         if fp is not None:
             self._create_with_fp(fp)
-        elif factory_class_names and factory_classes:
-            self.factory_class_names = factory_class_names
-            self.factory_classes = factory_classes
+        elif factory_manager_class_names and factory_manager_classes:
+            self.factory_class_names = factory_manager_class_names
+            self.factory_classes = factory_manager_classes
         else:
             raise Exception("Must specify a filepath or factory classes")
         
@@ -412,20 +411,20 @@ class FactoryFile():
             m = __import__(root)
             for name, obj in inspect.getmembers(m):
                 if inspect.isclass(obj):
-                    if issubclass(obj,BaseFeatureFactory):
-                        if name.split('.')[-1] != "BaseFeatureFactory":
-                            self.factory_class_names.append(name)
-                            self.factory_classes.append(getattr(m,name))
+                    if issubclass(obj,BaseFeatureFactoryManager):
+                        if name.split('.')[-1] != "BaseFeatureFactoryManager":
+                            self.factory_manager_class_names.append(name)
+                            self.factory_manager_classes.append(getattr(m,name))
         except ImportError:
             msg = 'Error : The file path to the function behaviors does' 
             msg = msg + ' not exist. Please check your configuration.'
             raise Exception(msg)
         
     def get_class_names(self):
-        return self.factory_class_names
+        return self.factory_manager_class_names
     
     def get_classes(self):
-        return self.factory_classes
+        return self.factory_manager_classes
     
 class FactoryFileIterator():
     
@@ -460,10 +459,10 @@ class FactoryFileIterator():
             m = __import__("pboost.feature.factory",
                            None,
                            locals(),
-                           ["DefaultFeatureFactory"],
+                           ["DefaultFeatureFactoryManager"],
                            -1)
-            factory_classes = [getattr(m,"DefaultFeatureFactory"),]
-            factory_class_names = ["DefaultFeatureFactory",]
+            factory_classes = [getattr(m,"DefaultFeatureFactoryManager"),]
+            factory_class_names = ["DefaultFeatureFactoryManager",]
             ff = FactoryFile(factory_class_names = factory_class_names,
                                factory_classes = factory_classes)
         else:
