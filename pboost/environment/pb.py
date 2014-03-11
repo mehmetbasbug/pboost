@@ -44,7 +44,8 @@ class PBoost():
         self.xvalEN = self.conf_dict['xval_no'] != 1
         self.xval_no = self.conf_dict['xval_no']
         self.wd = self.conf_dict['working_dir']
-
+        self.example_dim = self.conf_dict['example_dim']
+        
         """Filepath to the training dataset"""
         self.train_fp = self.wd + self.conf_dict['train_file']
         
@@ -86,7 +87,6 @@ class PBoost():
         self.deduplication = self.conf_dict['deduplication']
         self.omp_threads = self.conf_dict['omp_threads']
         self.depth = self.conf_dict['tree_depth']
-        self.example_dim = self.conf_dict['example_dim']
         
         self.isLeader = True
         self.logEN = logEN
