@@ -170,7 +170,8 @@ class Tree():
         self.c0 = d['c0']
         self.c1 = d['c1']
         node = Node()
-        self.root = node.from_dict(d['hypothesis'])
+        node.from_dict(d['hypothesis'])
+        self.root = node
         
     def get_all_nodes(self):
         li = list()
