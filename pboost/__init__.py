@@ -1,7 +1,7 @@
 __version_info__ = {
     'major': 0,
     'minor': 5,
-    'build': 1,
+    'build': 3,
 }
 
 
