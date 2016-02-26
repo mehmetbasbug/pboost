@@ -10,7 +10,7 @@ import os
 
 def get_configuration(conf_num, conf_path = "./configurations.cfg"):
     """
-    Parse the different fields of the configuration file, and 
+    Parse the different fields of the configuration file, and
     store them in a dictionary.
     Make sure the working directory is appended with '/' at the end.
     """
@@ -33,7 +33,7 @@ def get_configuration(conf_num, conf_path = "./configurations.cfg"):
     arbitrary = dict()
     for option in options:
         try:
-            if option == 'working_dir': 
+            if option == 'working_dir':
                 my_dict['working_dir'] = os.path.realpath(
                 os.path.expanduser(str(config.get(section,"working_dir")).strip()))
             elif option == 'example_dim':
@@ -48,12 +48,13 @@ def get_configuration(conf_num, conf_path = "./configurations.cfg"):
             else:
                 continue
     my_dict['arbitrary'] = arbitrary
-    
+
     # Convert to appropriate defaults
     if my_dict['train_file'] == None:
         raise Exception("``train_file`` input is mandatory")
-    
-    if my_dict['factory_files'] == None: 
+    my_dict['test_file'] = None if my_dict['test_file'] == '' else my_dict['test_file']
+
+    if my_dict['factory_files'] == None:
         """Set default behavior"""
         my_dict['factory_files'] = ("default",)
     else:
@@ -87,7 +88,7 @@ def get_configuration(conf_num, conf_path = "./configurations.cfg"):
 
     if my_dict['tree_depth'] == None:
         my_dict['tree_depth'] = 1
-        
+
     if my_dict['omp_threads'] != None:
         try:
             my_dict['omp_threads'] = int(my_dict['omp_threads'])
@@ -135,9 +136,9 @@ def get_configuration(conf_num, conf_path = "./configurations.cfg"):
             print ("Error : Configuration field ``max_memory`` must "+
                    "be an integer or floating point number.")
 
-    """Make sure the working directory is appended with '/' at the end."""                
+    """Make sure the working directory is appended with '/' at the end."""
     if my_dict['working_dir'][-1] != '/':
         my_dict['working_dir'] = my_dict['working_dir'] + '/'
-    
+
     return my_dict
 
